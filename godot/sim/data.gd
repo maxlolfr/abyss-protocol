@@ -13,6 +13,10 @@ const GRENADE_RANGE := 10
 const GRENADE_DAMAGE := 45
 const GRENADE_FALLOFF := 12
 const GRENADE_RADIUS := 2
+const RELOAD_TU := 8
+const MEDKIT_TU := 12
+const MEDKIT_HEAL := 14
+const INTERACT_TU := 10
 const WALL_HP := 40
 const COVER_PENALTY := [0, 20, 45]
 const HEIGHT_BONUS := 10 # tir plongeant : +10 % et couverture réduite d'un cran
@@ -26,9 +30,9 @@ const BODY := 1.0
 const WALL_H := 1.8 # au-dessus de l'œil (1,5) : bloque la vue au sol, mais on tire PAR-DESSUS depuis la passerelle
 
 const WEAPONS := {
-	"rifle": {"name": "Fusil à fléchettes", "damage": 26, "range": 14, "snap": [12, 62], "aimed": [24, 108], "breach": false},
-	"pistol": {"name": "Pistolet à gaz", "damage": 20, "range": 9, "snap": [9, 70], "aimed": [18, 92], "breach": false},
-	"harpoon": {"name": "Harpon lourd", "damage": 44, "range": 12, "snap": [16, 50], "aimed": [30, 102], "breach": true},
+	"rifle": {"name": "Fusil à fléchettes", "mag": 10, "damage": 26, "range": 14, "snap": [12, 62], "aimed": [24, 108], "breach": false},
+	"pistol": {"name": "Pistolet à gaz", "mag": 12, "damage": 20, "range": 9, "snap": [9, 70], "aimed": [18, 92], "breach": false},
+	"harpoon": {"name": "Harpon lourd", "mag": 4, "damage": 44, "range": 12, "snap": [16, 50], "aimed": [30, 102], "breach": true},
 	"dart": {"name": "Lance-dard", "damage": 24, "range": 12, "snap": [14, 60], "aimed": [26, 98], "breach": false},
 	"acid": {"name": "Jet corrosif", "damage": 34, "range": 6, "snap": [18, 82], "aimed": [], "breach": false},
 	"psi": {"name": "Onde psychique", "damage": 15, "range": 9, "snap": [20, 85], "aimed": [], "breach": false, "ignores_cover": true, "drain": 20},
@@ -43,20 +47,21 @@ const UNITS := {
 
 ## Prototype Godot : 3 aliens seulement (demande de Max), donc plus résistants que dans la référence TS (6 aliens).
 const SQUAD := [
-	{"id": "s1", "name": "Sgt. Walker", "weapon": "rifle", "acc": 68, "react": 58, "tu": 60, "hp": 36, "grenades": 1},
-	{"id": "s2", "name": "Okafor", "weapon": "harpoon", "acc": 60, "react": 40, "tu": 56, "hp": 42, "grenades": 0},
-	{"id": "s3", "name": "Lind", "weapon": "rifle", "acc": 74, "react": 62, "tu": 58, "hp": 32, "grenades": 0},
-	{"id": "s4", "name": "Moreau", "weapon": "pistol", "acc": 64, "react": 70, "tu": 66, "hp": 32, "grenades": 0},
+	{"id": "s1", "name": "Sgt. Walker", "medkit": 0, "weapon": "rifle", "acc": 68, "react": 58, "tu": 60, "hp": 36, "grenades": 1},
+	{"id": "s2", "name": "Okafor", "medkit": 0, "weapon": "harpoon", "acc": 60, "react": 40, "tu": 56, "hp": 42, "grenades": 0},
+	{"id": "s3", "name": "Lind", "medkit": 0, "weapon": "rifle", "acc": 74, "react": 62, "tu": 58, "hp": 32, "grenades": 0},
+	{"id": "s4", "name": "Moreau", "medkit": 3, "weapon": "pistol", "acc": 64, "react": 70, "tu": 66, "hp": 32, "grenades": 0},
 ]
 
 ## X : coque (indestructible)  # : cloison (destructible)  c/k : caisse au sol / sur la passerelle
 ## = : passerelle (niveau 1)  / : escalier (niveau 0,5)  ~ : eau  S : soldat
 ## N, C, P : Néréide, Carapace, Spectre (P sur la passerelle)
+## E : sas d'évacuation  D : artefact (objectif principal)  T : terminal sur la passerelle (objectif secondaire)
 const LAB := [
 	"XXXXXXXXXXXXXXXX",
-	"XS.S..#..===k==X",
-	"X.....#..====P=X",
-	"XS.S..c..======X",
+	"XSES..#..===T==X",
+	"XEEE..#..====P=X",
+	"XSES..c..======X",
 	"X..c....//=====X",
 	"X.......#......X",
 	"X####.###..c...X",
@@ -64,7 +69,7 @@ const LAB := [
 	"X..c..#..c..~~.X",
 	"X.....#.....~~.X",
 	"X..N..###.###..X",
-	"X........c.....X",
+	"X....D...c.....X",
 	"X..c....C......X",
 	"XXXXXXXXXXXXXXXX",
 ]

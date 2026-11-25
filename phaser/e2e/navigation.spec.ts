@@ -12,6 +12,7 @@ test('navigation : commencer, sélectionner, déplacer, finir le tour', async ({
   await page.waitForFunction(() => !!window.__abyss?.scene?.sys.isActive(), null, { timeout: 30_000 });
   await page.waitForTimeout(1000);
   await expect(page.locator('.card')).toHaveCount(4);
+  expect((await page.locator('#cards').boundingBox())!.width).toBeLessThanOrEqual(120); // roster étroit
   await expect(page.locator('#obj')).toContainText('Artefact');
 
   // sélection d'un soldat par sa carte
@@ -48,7 +49,8 @@ test('navigation : commencer, sélectionner, déplacer, finir le tour', async ({
   expect(`${after.x},${after.y}`).not.toBe(`${before.x},${before.y}`);
 
   // fin du tour (aperçu puis confirmation), vitesse « Passer » pour accélérer le tour alien
-  await page.getByRole('button', { name: 'Passer' }).click();
+  for (let i = 0; i < 3; i++) await page.locator('#speed').click(); // ×1 → ×2 → ×4 → Passer
+  await expect(page.locator('#speed')).toHaveText('Passer');
   await page.locator('[data-act=end]').click();
   await expect(page.locator('#preview')).toContainText('Fin du tour');
   await page.locator('[data-act=end]').click();

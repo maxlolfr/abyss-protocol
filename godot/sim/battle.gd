@@ -13,16 +13,28 @@ var side := "human"
 var outcome := "ongoing"
 var alert := false
 var last_known := {} # id soldat -> Vector2i
+var artifact := Vector2i(-1, -1) # au sol ; (-1,-1) si porté
+var terminal := Vector2i(-1, -1)
+var logs_done := false
+var evac: Array[Vector2i] = []
+var explored := PackedByteArray() # brouillard de guerre côté joueur (1 = déjà vu)
 
 func _init(seed_value := "abyss") -> void:
 	seed_text = seed_value
 	rng.seed = hash(seed_value)
 	var spawns := grid.parse(AbyssData.LAB)
+	artifact = spawns["artifact"]
+	terminal = spawns["terminal"]
+	for p in spawns["evac"]:
+		evac.append(p)
+	explored.resize(grid.w * grid.h)
 	for i in AbyssData.SQUAD.size():
 		var q: Dictionary = AbyssData.SQUAD[i]
 		var u := _make(q["id"], q["name"], "soldier", spawns["soldiers"][i])
 		u.weapon = q["weapon"]; u.acc = q["acc"]; u.react = q["react"]
 		u.max_tu = q["tu"]; u.tu = q["tu"]; u.max_hp = q["hp"]; u.hp = q["hp"]; u.grenades = q["grenades"]
+		u.medkit = q["medkit"]
+		u.ammo = AbyssData.WEAPONS[u.weapon]["mag"]
 		units.append(u)
 	var n := 0
 	for a in spawns["aliens"]:
@@ -33,6 +45,7 @@ func _init(seed_value := "abyss") -> void:
 	# Les aliens ont capté l'arrivée de l'escouade : ils convergent vers le sas dès le départ.
 	alert = true
 	last_known["s1"] = spawns["soldiers"][0]
+	update_explored()
 
 func _make(id: String, nm: String, kind: String, at: Vector2i) -> AbyssUnit:
 	var t: Dictionary = AbyssData.UNITS[kind]
@@ -53,20 +66,20 @@ func unit(id: String) -> AbyssUnit:
 func living(human_side = null) -> Array[AbyssUnit]:
 	var out: Array[AbyssUnit] = []
 	for u in units:
-		if u.alive and (human_side == null or u.human == human_side):
+		if u.alive and not u.evacuated and (human_side == null or u.human == human_side):
 			out.append(u)
 	return out
 
 func unit_at(p: Vector2i) -> AbyssUnit:
 	for u in units:
-		if u.alive and u.cell == p:
+		if u.alive and not u.evacuated and u.cell == p:
 			return u
 	return null
 
 func occupied(except: AbyssUnit) -> Dictionary:
 	var o := {}
 	for u in units:
-		if u.alive and u != except:
+		if u.alive and not u.evacuated and u != except:
 			o[grid.idx(u.cell)] = true
 	return o
 
@@ -115,6 +128,8 @@ func shot_info(u: AbyssUnit, t: AbyssUnit, mode: String, from := Vector2i(-1, -1
 	var info := {"chance": 0, "cover": cover, "cost": shot_cost(u, mode), "error": ""}
 	if m.size() != 2:
 		info["error"] = "Mode indisponible"; return info
+	if w.get("mag", 0) > 0 and u.ammo <= 0:
+		info["error"] = "Chargeur vide — rechargez"; return info
 	var up := AbyssData.BODY * (0.65 if t.kneeling else 1.0)
 	var eye := AbyssData.EYE * (0.7 if u.kneeling and src == u.cell else 1.0)
 	if not grid.line_clear(src, eye, t.cell, up):
@@ -151,11 +166,17 @@ func _damage(t: AbyssUnit, amount: int, ev: Array, by: AbyssUnit, drain := 0) ->
 		if by:
 			by.kills += 1
 		ev.append({"t": "death", "unit": t.id})
+		if t.carrying:
+			t.carrying = false
+			artifact = t.cell
+			ev.append({"t": "drop", "at": t.cell})
 
 func _resolve_shot(u: AbyssUnit, t: AbyssUnit, mode: String, ev: Array, reaction := false) -> void:
 	var info := shot_info(u, t, mode)
 	var w: Dictionary = AbyssData.WEAPONS[u.weapon]
 	var hit := rng.randi_range(0, 99) < int(info["chance"])
+	if w.get("mag", 0) > 0:
+		u.ammo -= 1
 	u.facing = _dir(t.cell - u.cell, u.facing)
 	ev.append({"t": "shot", "unit": u.id, "from": u.cell, "to": t.cell, "target": t.id, "weapon": u.weapon, "mode": mode,
 		"chance": info["chance"], "hit": hit, "reaction": reaction, "seen": seen_by_humans(u)})
@@ -178,6 +199,8 @@ func _reactions(mover: AbyssUnit, ev: Array) -> void:
 		if not mover.alive or outcome != "ongoing":
 			return
 		var w: Dictionary = AbyssData.WEAPONS[e.weapon]
+		if w.get("mag", 0) > 0 and e.ammo <= 0:
+			continue
 		if not sees(e, mover) or Vector2(e.cell).distance_to(Vector2(mover.cell)) > w["range"]:
 			continue
 		var cost := 0 if e.watching else shot_cost(e, "snap")
@@ -216,6 +239,8 @@ func do_move(u: AbyssUnit, path: Array[Vector2i], ev: Array) -> bool:
 		ev.append({"t": "move", "unit": u.id, "from": from, "to": p, "seen": was_seen or now_seen})
 		if not u.human and not was_seen and now_seen:
 			ev.append({"t": "spotted", "unit": u.id})
+		if u.human:
+			update_explored(u)
 		_awareness()
 		_reactions(u, ev)
 		if not u.alive or outcome != "ongoing":
@@ -276,6 +301,59 @@ func _check_outcome(ev: Array) -> void:
 	if outcome != "ongoing":
 		ev.append({"t": "outcome", "outcome": outcome})
 
+## Brouillard : mémorise les cases vues par l'escouade.
+func update_explored(only: AbyssUnit = null) -> void:
+	var who: Array[AbyssUnit] = living(true)
+	if only:
+		who = [only]
+	for h in who:
+		var r: int = h.vision()
+		for y in range(maxi(0, h.cell.y - r), mini(grid.h, h.cell.y + r + 1)):
+			for x in range(maxi(0, h.cell.x - r), mini(grid.w, h.cell.x + r + 1)):
+				var p := Vector2i(x, y)
+				var k := grid.idx(p)
+				if explored[k] == 0 and grid.can_see(h, p, 0.3):
+					explored[k] = 1
+
+func in_evac(p: Vector2i) -> bool:
+	return evac.has(p)
+
+func _near(u: AbyssUnit, p: Vector2i) -> bool:
+	return maxi(absi(u.cell.x - p.x), absi(u.cell.y - p.y)) <= 1 and absf(grid.z(u.cell) - grid.z(p)) <= 0.5
+
+## Ce qu'« Interagir » ferait : "artifact", "terminal" ou "".
+func interact_target(u: AbyssUnit) -> String:
+	if artifact.x >= 0 and _near(u, artifact):
+		return "artifact"
+	if not logs_done and _near(u, terminal):
+		return "terminal"
+	return ""
+
+func heal_error(u: AbyssUnit, t: AbyssUnit) -> String:
+	if u.medkit <= 0: return "Kit médical vide"
+	if t == null or not t.alive or not t.human: return "Cible invalide"
+	if maxi(absi(u.cell.x - t.cell.x), absi(u.cell.y - t.cell.y)) > 1: return "Contact requis"
+	if u.tu < AbyssData.MEDKIT_TU: return "UT insuffisantes"
+	if t.hp >= t.max_hp and t.wounds == 0: return "Pas blessé"
+	return ""
+
+func reload_error(u: AbyssUnit) -> String:
+	var mag: int = AbyssData.WEAPONS[u.weapon].get("mag", 0)
+	if mag == 0 or u.ammo >= mag: return "Chargeur plein"
+	if u.tu < AbyssData.RELOAD_TU: return "UT insuffisantes"
+	return ""
+
+## Soldats évacués / laissés sur place si on évacuait maintenant.
+func evac_split() -> Dictionary:
+	var leaving: Array[AbyssUnit] = []
+	var staying: Array[AbyssUnit] = []
+	for h in living(true):
+		if in_evac(h.cell):
+			leaving.append(h)
+		else:
+			staying.append(h)
+	return {"leaving": leaving, "staying": staying}
+
 # ---------- commandes du joueur ----------
 
 ## cmd = {"type": "move"|"shoot"|"breach"|"throw"|"kneel"|"watch"|"end_turn", ...}
@@ -284,7 +362,7 @@ func apply(cmd: Dictionary) -> Array:
 	if outcome != "ongoing" or side != "human":
 		return ev
 	var u: AbyssUnit = unit(cmd.get("unit", ""))
-	if cmd["type"] != "end_turn" and (u == null or not u.alive or not u.human):
+	if not cmd["type"] in ["end_turn", "evacuate"] and (u == null or not u.alive or not u.human):
 		return ev
 	match cmd["type"]:
 		"move":
@@ -316,6 +394,50 @@ func apply(cmd: Dictionary) -> Array:
 			u.tu -= AbyssData.GRENADE_TU
 			u.grenades -= 1
 			_explode(u, cmd["to"], ev)
+		"reload":
+			if reload_error(u) != "":
+				return ev
+			u.tu -= AbyssData.RELOAD_TU
+			u.ammo = AbyssData.WEAPONS[u.weapon]["mag"]
+			ev.append({"t": "reload", "unit": u.id})
+		"heal":
+			var t := unit(cmd["target"])
+			if heal_error(u, t) != "":
+				return ev
+			u.tu -= AbyssData.MEDKIT_TU
+			u.medkit -= 1
+			var amount := mini(AbyssData.MEDKIT_HEAL, t.max_hp - t.hp)
+			t.hp += amount
+			t.wounds = 0
+			ev.append({"t": "heal", "unit": u.id, "target": t.id, "amount": amount})
+		"interact":
+			var what := interact_target(u)
+			if what == "" or u.tu < AbyssData.INTERACT_TU:
+				return ev
+			u.tu -= AbyssData.INTERACT_TU
+			if what == "artifact":
+				u.carrying = true
+				artifact = Vector2i(-1, -1)
+				alert = true
+				last_known[u.id] = u.cell # la pulsation révèle le porteur à tous les aliens
+				ev.append({"t": "pickup", "unit": u.id})
+				ev.append({"t": "alarm"})
+			else:
+				logs_done = true
+				ev.append({"t": "logs", "unit": u.id})
+		"evacuate":
+			var split := evac_split()
+			if split["leaving"].is_empty():
+				return ev
+			var ids := []
+			var won := false
+			for h in split["leaving"]:
+				h.evacuated = true
+				ids.append(h.id)
+				won = won or h.carrying
+			ev.append({"t": "evacuate", "units": ids})
+			outcome = "victory" if won else "defeat"
+			ev.append({"t": "outcome", "outcome": outcome})
 		"kneel":
 			if u.kneeling or u.tu < AbyssData.KNEEL_TU:
 				return ev
@@ -335,6 +457,7 @@ func apply(cmd: Dictionary) -> Array:
 			if outcome == "ongoing":
 				turn += 1
 				_start_side("human", ev)
+				update_explored()
 	_check_outcome(ev)
 	return ev
 
@@ -353,6 +476,43 @@ func _start_side(s: String, ev: Array) -> void:
 				u.hp = 0
 				ev.append({"t": "death", "unit": u.id})
 	_check_outcome(ev)
+
+## Sauvegarde complète (JSON), RNG comprise : la partie reprend à l'identique.
+func to_dict() -> Dictionary:
+	var us := []
+	for u in units:
+		us.append(u.to_dict())
+	var lk := {}
+	for id in last_known:
+		lk[id] = [last_known[id].x, last_known[id].y]
+	var walls := {}
+	for k in grid.wall_hp:
+		walls[str(k)] = grid.wall_hp[k]
+	return {"version": 1, "seed": seed_text, "rng": str(rng.state), "turn": turn, "side": side, "outcome": outcome, "alert": alert,
+		"last_known": lk, "artifact": [artifact.x, artifact.y], "logs_done": logs_done, "tiles": Array(grid.tiles), "walls": walls,
+		"explored": Array(explored), "units": us}
+
+static func from_dict(d: Dictionary) -> AbyssBattle:
+	if int(d.get("version", 0)) != 1:
+		return null
+	var b := AbyssBattle.new(String(d["seed"]))
+	b.rng.state = int(String(d["rng"]))
+	b.turn = int(d["turn"]); b.side = d["side"]; b.outcome = d["outcome"]; b.alert = d["alert"]; b.logs_done = d["logs_done"]
+	b.artifact = Vector2i(int(d["artifact"][0]), int(d["artifact"][1]))
+	b.last_known = {}
+	for id in d["last_known"]:
+		b.last_known[id] = Vector2i(int(d["last_known"][id][0]), int(d["last_known"][id][1]))
+	for i in d["tiles"].size():
+		b.grid.tiles[i] = int(d["tiles"][i])
+	b.grid.wall_hp = {}
+	for k in d["walls"]:
+		b.grid.wall_hp[int(k)] = int(d["walls"][k])
+	for i in d["explored"].size():
+		b.explored[i] = int(d["explored"][i])
+	b.units.clear()
+	for ud in d["units"]:
+		b.units.append(AbyssUnit.from_dict(ud))
+	return b
 
 ## Empreinte de l'état complet (tests de déterminisme et de sauvegarde).
 func snapshot() -> String:

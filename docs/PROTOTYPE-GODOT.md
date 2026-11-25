@@ -20,9 +20,15 @@ Demande de Max (25/11/2026) : privilégier Godot + GDScript en vraie 3D isométr
 - `view/` : `main.gd` (scène 3D, caméra, entrées, rejeu des événements), `hud.gd` (interface).
 - `tests/run_tests.gd` : 22 vérifications + parties IA contre IA (`godot --headless --path . -s res://tests/run_tests.gd`).
 
+## Itération « vertical slice » (mission ChatGPT, PR #24 du studio)
+- Parité de gameplay avec la référence : artefact + alarme + extraction par le sas, journal du terminal (sur la passerelle), kit médical, munitions et rechargement, brouillard de guerre (cases inconnues masquées, mémorisées assombries), sauvegarde automatique et reprise (`user://abyss_save.json`). 31 tests.
+- Laboratoire représentatif : coque haute avec vitres sur l'océan, coupe automatique des pans côté caméra, plancher océanique, roches, neige marine, cuve brisée, consoles à écrans, terminal vert, balisage cyan au sol, contamination violette mesurée autour du nid, alarme rouge, ambre au sas.
+- Unités : plongeur et Néréide retravaillés (placeholders étiquetés). **Interface de remplacement stable** : `view/unit_visuals.gd` charge `res://assets/units/<kind>.tscn` s'il existe (origine aux pieds, regard +Z, 1 u = 1 m, nœud `Muzzle`, animations idle/walk/shoot/hit/death).
+- Effets : recul, éclair de bouche, traceur, étincelles d'impact, sursaut de la cible, chute, effondrement avec débris et poussière, onde de choc + tremblement, caméra cinématique courte facultative sur les tirs précis du joueur (désactivable, coupée en vitesse ×2/×4).
+- Interface compacte : roster étroit, actions contextuelles (n'apparaissent que si utiles), aperçu sur une ligne + Confirmer/X, objectifs sur deux lignes, réglages dans un panneau « Menu » (ombres, caméra ciné, i/s, vitesse ennemie, nouvelle mission).
+
 ## Différences avec la référence TypeScript (volontaires, pour ce prototype)
 - 3 aliens au lieu de 6 (demande), donc plus résistants, alertés dès le départ et capables de se mettre en surveillance.
-- Pas encore : brouillard des cases (seuls les ennemis non vus sont masqués), munitions, soin, objectifs artefact/journal, sauvegarde.
 
 ## Mesures
 - Simulation : 16 parties complètes IA contre IA en ≈ 2,3 s (CPU du serveur).
