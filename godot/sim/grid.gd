@@ -18,7 +18,7 @@ func parse(rows: Array) -> Dictionary:
 	w = String(rows[0]).length()
 	tiles.clear()
 	heights.clear()
-	var spawns := {"soldiers": [], "aliens": []}
+	var spawns := {"soldiers": [], "aliens": [], "evac": [], "artifact": Vector2i(-1, -1), "terminal": Vector2i(-1, -1)}
 	for y in h:
 		var row: String = rows[y]
 		for x in w:
@@ -31,6 +31,9 @@ func parse(rows: Array) -> Dictionary:
 					t = T.WALL
 					wall_hp[y * w + x] = AbyssData.WALL_HP
 				"c": t = T.LOW
+				"T":
+					t = T.LOW
+					z = 1.0
 				"k":
 					t = T.LOW
 					z = 1.0
@@ -43,6 +46,12 @@ func parse(rows: Array) -> Dictionary:
 			heights.append(z)
 			if c == "S":
 				spawns["soldiers"].append(Vector2i(x, y))
+			if c == "S" or c == "E":
+				spawns["evac"].append(Vector2i(x, y))
+			if c == "D":
+				spawns["artifact"] = Vector2i(x, y)
+			if c == "T":
+				spawns["terminal"] = Vector2i(x, y)
 			elif c in "NCP":
 				spawns["aliens"].append([{"N": "nereide", "C": "carapace", "P": "spectre"}[c], Vector2i(x, y)])
 	return spawns

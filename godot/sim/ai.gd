@@ -37,7 +37,7 @@ static func _best_attack(b: AbyssBattle, a: AbyssUnit, from: Vector2i, tu: int, 
 				continue
 			var shots := mini(2, tu / cost)
 			var dmg := maxf(1.0, w["damage"] - t.armor) + (10.0 if w.has("drain") else 0.0)
-			var value: float = info["chance"] / 100.0 * dmg * shots * (1.4 if t.hp <= w["damage"] else 1.0)
+			var value: float = info["chance"] / 100.0 * dmg * shots * (1.4 if t.hp <= w["damage"] else 1.0) * (1.3 if t.carrying else 1.0)
 			if best.is_empty() or value > best["value"]:
 				best = {"target": t, "mode": mode, "value": value, "chance": info["chance"]}
 	return best

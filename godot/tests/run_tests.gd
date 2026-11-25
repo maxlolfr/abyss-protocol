@@ -73,6 +73,46 @@ func _init() -> void:
 		bb.apply({"type": "end_turn"})
 		bb.apply({"type": "end_turn"})
 	check(x.snapshot() == y.snapshot(), "même seed + mêmes commandes = même partie")
+	# objectifs, soin, munitions, brouillard, sauvegarde
+	var o := AbyssBattle.new("obj")
+	var c1 := o.unit("s1")
+	check(o.explored.count(1) > 0 and o.explored[o.grid.idx(Vector2i(13, 12))] == 0, "brouillard : sas vu, fond du labo inconnu")
+	c1.cell = o.artifact + Vector2i(-1, 0)
+	var evp := o.apply({"type": "interact", "unit": "s1"})
+	check(c1.carrying and evp.any(func(e): return e["t"] == "alarm"), "prendre l'artefact déclenche l'alarme")
+	c1.cell = o.evac[0]
+	o.apply({"type": "evacuate"})
+	check(o.outcome == "victory", "évacuer l'artefact = victoire")
+	var rt := AbyssBattle.new("retraite")
+	rt.apply({"type": "evacuate"})
+	check(rt.outcome == "defeat", "évacuer sans l'artefact = retraite")
+	var tm := AbyssBattle.new("terminal")
+	var lnd := tm.unit("s3")
+	lnd.cell = tm.terminal + Vector2i(-1, 0)
+	tm.apply({"type": "interact", "unit": "s3"})
+	check(tm.logs_done, "journal téléchargé depuis la passerelle")
+	var md := AbyssBattle.new("soin")
+	var mo := md.unit("s4")
+	var wk := md.unit("s1")
+	wk.hp = 10; wk.wounds = 2
+	mo.cell = wk.cell + Vector2i(1, 1)
+	md.apply({"type": "heal", "unit": "s4", "target": "s1"})
+	check(wk.hp == 24 and wk.wounds == 0 and mo.medkit == 2, "kit médical : +14 PV, blessures soignées")
+	var am := AbyssBattle.new("ammo")
+	var ok3 := am.unit("s2")
+	ok3.ammo = 0
+	var tgt: AbyssUnit = am.living(false)[0]
+	check(am.shot_info(ok3, tgt, "snap")["error"].begins_with("Chargeur"), "chargeur vide : tir impossible")
+	am.apply({"type": "reload", "unit": "s2"})
+	check(ok3.ammo == 4 and ok3.tu == 56 - AbyssData.RELOAD_TU, "rechargement : 8 UT")
+	var sv := AbyssBattle.new("save")
+	sv.apply({"type": "move", "unit": "s3", "to": Vector2i(2, 5)})
+	sv.apply({"type": "end_turn"})
+	var copy := AbyssBattle.from_dict(JSON.parse_string(JSON.stringify(sv.to_dict())))
+	for bb in [sv, copy]:
+		bb.apply({"type": "end_turn"})
+		bb.apply({"type": "end_turn"})
+	check(copy.snapshot() == sv.snapshot(), "sauvegarde puis reprise = même suite de partie")
 	# IA contre IA : les parties se terminent
 	var t0 := Time.get_ticks_msec()
 	var wins := 0
