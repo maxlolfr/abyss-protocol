@@ -46,7 +46,8 @@ Principe : le rendu n'écrit jamais dans l'état ; il envoie des `Command` et re
 | 25/11 | **Max privilégie Godot + GDScript en vraie 3D** (qualité et ambition à long terme), sous réserve de validation technique ; le prototype TypeScript est conservé comme référence | Décision de Max |
 | 25/11 | Dépôt public dédié `maxlolfr/abyss-protocol` (Game-studio-ai reste privé) ; les deux prototypes y sont publiés côte à côte sur GitHub Pages | Implémenté |
 | 25/11 | Prototype Godot 4.7.2 : simulation GDScript sans nœuds (`godot/sim`), 2 niveaux, tir plongeant, cloisons destructibles (harpon « Brèche », grenade), caméra orthographique rotative, ombres dynamiques désactivables | Implémenté, 22 tests |
-| 25/11 | Choix définitif du moteur **après essai des deux prototypes** sur Honor Magic V5, iPhone 15 Pro Max et iPad | **En attente de Max** |
+| 25/11 | Choix définitif du moteur après essai des deux prototypes | Remplacée ci-dessous |
+| 25/11 | **MOTEUR DÉFINITIF : Godot 4.7 + GDScript, vraie 3D isométrique** (décision ferme de Max, 10 h 55). Le prototype Phaser reste dans `phaser/` comme référence fonctionnelle de la simulation (règles et tests), sans nouveau développement de rendu | **Validé par Max** |
 
 ## Équilibrage (mesuré par simulation IA contre IA, 40 parties)
 Escouade pilotée par une IA simple (sans genou, surveillance, grenade ni soin) : 47,5 % de victoires, 2,8 soldats perdus en moyenne, 11 tours. Un joueur humain devrait faire mieux. À réévaluer après les tests de Max.

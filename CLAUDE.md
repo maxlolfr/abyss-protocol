@@ -5,10 +5,10 @@ Vision : `docs/MASTER_GDD.md`, `docs/ART_DIRECTION.md`, `docs/CLAUDE_START.md`. 
 
 ## État au 25/11/2026, 11 h (Bangkok)
 - **Phase 1** (prototype tactique) : deux prototypes jouables, publiés sur https://maxlolfr.github.io/abyss-protocol/ (GitHub Pages, source « GitHub Actions », activée par Max).
-  - `godot/` : Godot 4.7.2 + GDScript, vraie 3D isométrique (choix préféré de Max, non définitif). 31 tests (`godot --headless --path godot -s res://tests/run_tests.gd`). Détails : `docs/PROTOTYPE-GODOT.md`.
-  - `phaser/` : Phaser 4.2.1 + TypeScript, 2.5D, **référence fonctionnelle** de la simulation (28 tests Vitest + test Playwright).
-- PR #1 (`claude-b/vertical-slice` : labo Godot, parité gameplay, effets, HUD compacts) : CI verte, **fusion en attente de l'accord de Max**.
-- Choix définitif du moteur : après les tests de Max sur iPhone 15 Pro Max, Honor Magic V5, iPad (i/s ombres on/off). **Ne pas lancer la phase 2 sans validation.**
+  - `godot/` : **moteur définitif du jeu (décision ferme de Max, 25/11 10 h 55)** : Godot 4.7.2 + GDScript, vraie 3D isométrique. 31 tests (`godot --headless --path godot -s res://tests/run_tests.gd`). Détails : `docs/PROTOTYPE-GODOT.md`.
+  - `phaser/` : Phaser 4.2.1 + TypeScript, 2.5D, gardé comme **référence fonctionnelle** de la simulation (28 tests Vitest + test Playwright). Plus de développement de rendu Phaser.
+- PR #1 (vertical slice : labo Godot, parité gameplay, effets, HUD compacts) : fusionnée par Max et publiée.
+- Reste de la phase 1 : retours de Max sur iPhone 15 Pro Max, Honor Magic V5, iPad (i/s ombres on/off), intégration de ses décors et personnages (≈ 50 images : références 2D pour modèles et textures 3D). **Ne pas lancer la phase 2 sans validation.**
 
 ## Comment travailler ici
 - CI : `.github/workflows/build.yml` teste les deux simulations, compile les deux versions Web et publie Pages sur `main`. Claude lit les journaux via `gh api .../actions/jobs/<id>/logs` ; il ne peut ni ouvrir `*.github.io` depuis le shell (utiliser WebFetch), ni activer Pages, ni créer de dépôt.
@@ -16,6 +16,6 @@ Vision : `docs/MASTER_GDD.md`, `docs/ART_DIRECTION.md`, `docs/CLAUDE_START.md`. 
 - Règles : branche `claude-b/...` + PR ; simulation séparée du rendu ; aucune dépense ; demander avant toute génération ElevenLabs ; pas de production massive de contenu avant validation du plaisir de jeu.
 
 ## Prochaines étapes probables
-1. Fusion de la PR #1, puis retours de Max sur appareils.
+1. Ranger et trier les images de Max dans le studio privé (`Game-studio-ai/docs/studio/art/abyss-protocol/`) ; dire lesquelles sont utilisables directement (textures, UI, portraits) et lesquelles servent de référence de modélisation 3D.
 2. Équilibrage Godot (l'escouade gagne trop en IA contre IA), Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).
 3. Intégrer les références visuelles de ChatGPT/Gemini quand elles seront dans le studio ; vrais modèles via `godot/view/unit_visuals.gd` (`res://assets/units/<kind>.tscn`).
