@@ -1,0 +1,750 @@
+{
+ "1ddf9dd0-image.png": [
+  "08_FLOORS_WALLS",
+  "sol grille 4 panneaux, bandes jaunes"
+ ],
+ "60477fe8-image.png": [
+  "08_FLOORS_WALLS",
+  "mur hublot, tuyau rouge"
+ ],
+ "4b099e6d-image.png": [
+  "08_FLOORS_WALLS",
+  "panneau mural étroit"
+ ],
+ "2cee9894-image.png": [
+  "08_FLOORS_WALLS",
+  "mur d'angle, tuyaux rouges"
+ ],
+ "659bd9ad-image.jpg": [
+  "08_FLOORS_WALLS",
+  "sol roche veines violettes"
+ ],
+ "8e4a2529-image.jpg": [
+  "08_FLOORS_WALLS",
+  "sol métal contaminé (veines aliens)"
+ ],
+ "84218943-image.jpg": [
+  "08_FLOORS_WALLS",
+  "sol métal endommagé, impacts"
+ ],
+ "85e5f62b-image.jpg": [
+  "08_FLOORS_WALLS",
+  "sol trappe ronde, bandes jaunes"
+ ],
+ "65362b10-image.jpg": [
+  "08_FLOORS_WALLS",
+  "sol métal propre, liserés cyan"
+ ],
+ "9075e480-image.png": [
+  "08_FLOORS_WALLS",
+  "capture Tripo : mur à lattes cyan"
+ ],
+ "7b9be9f4-image.jpg": [
+  "08_FLOORS_WALLS",
+  "mur à lattes infesté"
+ ],
+ "67c014a0-image.jpg": [
+  "08_FLOORS_WALLS",
+  "pilier organique alien"
+ ],
+ "0f981506-image.jpg": [
+  "08_FLOORS_WALLS",
+  "mur organique alien"
+ ],
+ "a8ee7f33-image.jpg": [
+  "08_FLOORS_WALLS",
+  "arche/porte organique alien"
+ ],
+ "60ca1997-image.jpg": [
+  "08_FLOORS_WALLS",
+  "mur organique alien (cadre métal)"
+ ],
+ "e5d133bd-image.jpg": [
+  "08_FLOORS_WALLS",
+  "porte double station"
+ ],
+ "1319ce2a-image.jpg": [
+  "08_FLOORS_WALLS",
+  "mur d'angle à lattes cyan"
+ ],
+ "eb1fe994-image.jpg": [
+  "09_PROPS",
+  "couvert bas (barricade)"
+ ],
+ "461807c8-image.jpg": [
+  "08_FLOORS_WALLS",
+  "pilier station"
+ ],
+ "3f296092-image.jpg": [
+  "08_FLOORS_WALLS",
+  "mur à lattes cyan"
+ ],
+ "fb11d75e-image.png": [
+  "09_PROPS",
+  "capture Tripo : grenade, médikit, fusil harpon"
+ ],
+ "f3976b90-image.png": [
+  "09_PROPS",
+  "capture Tripo : porte coffre, console, tuyaux"
+ ],
+ "e54888cb-image.png": [
+  "09_PROPS",
+  "capture Tripo : escalier, hublot, caisse, panneau"
+ ],
+ "c1e7c3ca-image.jpg": [
+  "09_PROPS",
+  "cocon alien"
+ ],
+ "a45966a2-image.jpg": [
+  "07_ENVIRONMENTS",
+  "nid alien (côtes, membranes)"
+ ],
+ "ae4441d4-image.jpg": [
+  "07_ENVIRONMENTS",
+  "amas rocheux bioluminescent"
+ ],
+ "3f279603-image.jpg": [
+  "07_ENVIRONMENTS",
+  "nid alien (vue 2)"
+ ],
+ "490481e0-image.jpg": [
+  "07_ENVIRONMENTS",
+  "amas rocheux (vue 2)"
+ ],
+ "be4ac7d8-image.jpg": [
+  "07_ENVIRONMENTS",
+  "nid alien (vue 3)"
+ ],
+ "14f508d9-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "hangar / dock de maintenance"
+ ],
+ "def883bf-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "centre de commandement"
+ ],
+ "ecdf3d48-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "module de recherche en croix"
+ ],
+ "f411944e-image.jpg": [
+  "05_VEHICLES",
+  "épave de sous-marin"
+ ],
+ "a3c5a2f1-image.jpg": [
+  "05_VEHICLES",
+  "vaisseau alien organique"
+ ],
+ "968a280a-image.jpg": [
+  "06_ROBOTICS",
+  "drone RECON-01"
+ ],
+ "baa4019e-image.jpg": [
+  "05_VEHICLES",
+  "intercepteur UDFT-INT-01"
+ ],
+ "e021ef2e-image.jpg": [
+  "05_VEHICLES",
+  "transport UDFT-07"
+ ],
+ "987a1f0f-image.jpg": [
+  "09_PROPS",
+  "cocon alien (vue 2)"
+ ],
+ "76dc41ab-image.jpg": [
+  "09_PROPS",
+  "console alien à runes"
+ ],
+ "1ee497ef-image.jpg": [
+  "09_PROPS",
+  "cristal violet"
+ ],
+ "bb6b00bf-image.jpg": [
+  "07_ENVIRONMENTS",
+  "monticule alien à orifices"
+ ],
+ "9045246e-image.jpg": [
+  "09_PROPS",
+  "artefact cristal enchâssé"
+ ],
+ "335e9815-image.jpg": [
+  "09_PROPS",
+  "console alien à runes (doublon ?)"
+ ],
+ "341f6bb8-image.jpg": [
+  "09_PROPS",
+  "cristal violet (doublon ?)"
+ ],
+ "f4f899de-image.jpg": [
+  "08_FLOORS_WALLS",
+  "dalle vitrée / hublot de sol"
+ ],
+ "61083868-image.jpg": [
+  "09_PROPS",
+  "cristal violet (variante)"
+ ],
+ "45ff8126-image.jpg": [
+  "09_PROPS",
+  "oeuf alien"
+ ],
+ "78bcdeeb-image.jpg": [
+  "09_PROPS",
+  "faisceau de tuyaux (4, coudés)"
+ ],
+ "c9788850-image.jpg": [
+  "09_PROPS",
+  "faisceau de tuyaux (4, droits)"
+ ],
+ "d95bfc6e-image.jpg": [
+  "09_PROPS",
+  "escalier métallique"
+ ],
+ "dd4a3747-image.jpg": [
+  "09_PROPS",
+  "passerelle à garde-corps"
+ ],
+ "a4cb95c5-image.jpg": [
+  "09_PROPS",
+  "console UNIT-734"
+ ],
+ "1dc9087e-image.jpg": [
+  "09_PROPS",
+  "générateur / cuve cyan"
+ ],
+ "b1e97b12-image.jpg": [
+  "09_PROPS",
+  "tube de stase vide"
+ ],
+ "c8202ce7-image.jpg": [
+  "09_PROPS",
+  "console à six écrans"
+ ],
+ "da4b5100-image.jpg": [
+  "09_PROPS",
+  "caisse militaire"
+ ],
+ "b47a4d70-image.jpg": [
+  "08_FLOORS_WALLS",
+  "porte blindée ronde (coffre)"
+ ],
+ "7e48caf2-image.jpg": [
+  "08_FLOORS_WALLS",
+  "sol grille avec trappe et câbles"
+ ],
+ "67be1266-image.jpg": [
+  "09_PROPS",
+  "panneau électrique mural"
+ ],
+ "023b7821-image.jpg": [
+  "04_WEAPONS",
+  "fusil alien organique"
+ ],
+ "825d7779-image.jpg": [
+  "09_PROPS",
+  "panneau électrique mural (vue 2)"
+ ],
+ "3707b004-image.jpg": [
+  "04_WEAPONS",
+  "fusil alien organique (vue 2)"
+ ],
+ "a41a5a60-image.jpg": [
+  "04_WEAPONS",
+  "grenade ABYSS PROTOCOL (rendu 3D)"
+ ],
+ "889d3801-image.png": [
+  "09_PROPS",
+  "médikit"
+ ],
+ "322faee9-image.png": [
+  "09_PROPS",
+  "planche : grenade, médikit, sérum ADN, munitions"
+ ],
+ "83d8c589-image.png": [
+  "04_WEAPONS",
+  "fusil harpon H-7"
+ ],
+ "e087cda8-image.png": [
+  "04_WEAPONS",
+  "pistolet PX-3"
+ ],
+ "4aef703b-image.png": [
+  "04_WEAPONS",
+  "fusil de précision à bipied"
+ ],
+ "e0872fe4-image.png": [
+  "04_WEAPONS",
+  "lance-roquettes / canon lourd"
+ ],
+ "487ad415-image.png": [
+  "04_WEAPONS",
+  "fusil d'assaut"
+ ],
+ "2f998f05-image.png": [
+  "03_BOSSES",
+  "humain psionique violet, cape (traître / boss ?)"
+ ],
+ "56d8697b-image.png": [
+  "02_ALIENS",
+  "capture Tripo : Carapace quadrupède"
+ ],
+ "ff61409d-image.png": [
+  "06_ROBOTICS",
+  "robot quadrupède jaune"
+ ],
+ "422f3e6b-image.png": [
+  "02_ALIENS",
+  "capture Tripo : Néréide bipède"
+ ],
+ "4a6f0a77-image.png": [
+  "03_BOSSES",
+  "boss quadrupède à tentacules buccaux (Léviathan ?)"
+ ],
+ "715d6625-image.png": [
+  "03_BOSSES",
+  "boss à tentacules"
+ ],
+ "846a2e29-image.png": [
+  "03_BOSSES",
+  "boss à tentacules (doublon ?)"
+ ],
+ "be1f97af-image.png": [
+  "01_CHARACTERS",
+  "ingénieur à lunettes (recrue, pas Moreau)"
+ ],
+ "ac07c3b5-image.png": [
+  "02_ALIENS",
+  "alien élancé, crête (Spectre ?)"
+ ],
+ "1a72ebe4-image.png": [
+  "02_ALIENS",
+  "alien bipède trapu (Néréide ?)"
+ ],
+ "cffa1e3b-image.png": [
+  "01_CHARACTERS",
+  "Okafor, artilleur lourd (T-pose)"
+ ],
+ "0aa7103a-image.png": [
+  "01_CHARACTERS",
+  "Walker ? soldat blond (T-pose, à confirmer)"
+ ],
+ "86318321-image.png": [
+  "01_CHARACTERS",
+  "Moreau, médecin (T-pose)"
+ ],
+ "62c73f7d-image.png": [
+  "02_ALIENS",
+  "Carapace quadrupède"
+ ],
+ "4d2ae196-image.png": [
+  "02_ALIENS",
+  "alien bipède trapu (doublon ?)"
+ ],
+ "2847f215-image.png": [
+  "02_ALIENS",
+  "alien élancé (doublon ?)"
+ ],
+ "70390db8-image.png": [
+  "01_CHARACTERS",
+  "soldat avec fusil, insigne pieuvre (portrait/pose héroïque)"
+ ],
+ "f5a4aec7-image.jpg": [
+  "02_ALIENS",
+  "alien humanoïde bleu à crête, 4 vues (planche turnaround)"
+ ],
+ "e0cae9cb-image.png": [
+  "02_ALIENS",
+  "fiche officielle XENO-001 Néréide (vues, palette, rig)"
+ ],
+ "78184def-image.jpg": [
+  "09_PROPS",
+  "PROP-005 générateur : 4 états (inactif, actif, surcharge, détruit)"
+ ],
+ "d4b958f8-image.jpg": [
+  "09_PROPS",
+  "PROP-011 console d'accès : 4 états"
+ ],
+ "88c5e041-image.jpg": [
+  "08_FLOORS_WALLS",
+  "PROP-001 porte : fermée, ouverte, endommagée, détruite"
+ ],
+ "c9f2d025-image.jpg": [
+  "14_TEXTURES",
+  "texture tôle larmée (seamless)"
+ ],
+ "0b9ef4f1-image.jpg": [
+  "14_TEXTURES",
+  "texture tôle larmée fine (seamless)"
+ ],
+ "e9ab04d7-image.jpg": [
+  "14_TEXTURES",
+  "texture panneaux métal sombre (seamless)"
+ ],
+ "749218e6-image.jpg": [
+  "09_PROPS",
+  "planche 12 équipements (grenades, scanner, bouteilles, sac, balise…)"
+ ],
+ "ac6b05ca-image.jpg": [
+  "04_WEAPONS",
+  "fusil alien cristallin (2 vues)"
+ ],
+ "297ab1bf-image.jpg": [
+  "04_WEAPONS",
+  "lanceur alien organique à poche (2 vues)"
+ ],
+ "97cfe370-image.jpg": [
+  "04_WEAPONS",
+  "pistolet alien à orbe (2 vues)"
+ ],
+ "7e22f21c-image.jpg": [
+  "04_WEAPONS",
+  "pistolet alien osseux (2 vues)"
+ ],
+ "125bd4bd-image.jpg": [
+  "04_WEAPONS",
+  "fusil alien à gueule (2 vues)"
+ ],
+ "e7c29d40-image.jpg": [
+  "13_VFX",
+  "VFX-015 destruction d'environnement, 4 phases"
+ ],
+ "0c02243b-image.jpg": [
+  "13_VFX",
+  "VFX-014 téléportation alien, 4 phases"
+ ],
+ "0a68aa7f-image.jpg": [
+  "13_VFX",
+  "VFX-013 fuite d'eau sous pression, 4 phases"
+ ],
+ "3e5d511c-image.jpg": [
+  "13_VFX",
+  "VFX-012 court-circuit, 4 phases"
+ ],
+ "3d8f3553-image.jpg": [
+  "13_VFX",
+  "VFX-011 grenade fumigène, 4 phases"
+ ],
+ "4d585726-image.jpg": [
+  "13_VFX",
+  "VFX-010 soin médical, 4 phases"
+ ],
+ "08cec2d0-image.png": [
+  "12_PORTRAITS",
+  "planche personnages et factions (héros, PNJ, Voss, boss)"
+ ],
+ "f1986d55-image.png": [
+  "12_PORTRAITS",
+  "pack DA : portraits Walker, Okafor, Lind, Moreau ; HUD ; bestiaire"
+ ],
+ "dbd05acf-image.jpg": [
+  "02_ALIENS",
+  "fiche Spectre psionique (méduse), 4 vues"
+ ],
+ "d6bec0ae-image.jpg": [
+  "02_ALIENS",
+  "fiche Néréide éclaireur, 4 vues"
+ ],
+ "9591caef-image.jpg": [
+  "01_CHARACTERS",
+  "fiche Walker, marine d'assaut, 4 vues + arme + sac"
+ ],
+ "9254c8e6-image.jpg": [
+  "04_WEAPONS",
+  "fiche 6 armes (AR-9, MG-77, SR-9, AR-7, PX-3, lanceur)"
+ ],
+ "2e4c5d40-image.jpg": [
+  "13_VFX",
+  "VFX-002 impact de balle sur métal"
+ ],
+ "f518ada7-image.jpg": [
+  "13_VFX",
+  "VFX-001 flash de bouche de fusil"
+ ],
+ "3be63800-image.jpg": [
+  "13_VFX",
+  "VFX-003 projectile plasma alien"
+ ],
+ "5a057f42-image.jpg": [
+  "13_VFX",
+  "VFX-005 explosion à fragmentation"
+ ],
+ "87f7f9f7-image.jpg": [
+  "13_VFX",
+  "VFX-004 impact plasma"
+ ],
+ "6c17a1a5-image.jpg": [
+  "13_VFX",
+  "VFX-006 onde IEM"
+ ],
+ "babd20c7-image.jpg": [
+  "13_VFX",
+  "VFX-008 attaque psionique"
+ ],
+ "6f04eaab-image.jpg": [
+  "13_VFX",
+  "VFX-007 bouclier d'énergie"
+ ],
+ "61f5d5bf-image.jpg": [
+  "13_VFX",
+  "VFX-011 fumigène (doublon ?)"
+ ],
+ "ee25b86b-image.jpg": [
+  "13_VFX",
+  "VFX-010 soin (doublon ?)"
+ ],
+ "a258f25a-image.jpg": [
+  "13_VFX",
+  "VFX-009 impact d'acide"
+ ],
+ "52700d5c-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "salle du réacteur (vue intérieure)"
+ ],
+ "fb0c2358-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "armurerie / salle d'équipement"
+ ],
+ "cb21db74-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "salle d'entraînement / gymnase"
+ ],
+ "e449880b-image.jpg": [
+  "05_VEHICLES",
+  "sous-marin de transport (Triton ?), 3 vues"
+ ],
+ "3224c7e2-image.jpg": [
+  "05_VEHICLES",
+  "sous-marin de transport (doublon ?)"
+ ],
+ "534c77a4-image.jpg": [
+  "05_VEHICLES",
+  "appareil plat furtif, 3 vues"
+ ],
+ "6b5403ff-image.jpg": [
+  "05_VEHICLES",
+  "sous-marin d'attaque fuselé (Barracuda ?), 3 vues"
+ ],
+ "d79c0e9a-image.jpg": [
+  "05_VEHICLES",
+  "rover 6 roues à bras, 3 vues"
+ ],
+ "61070090-image.jpg": [
+  "05_VEHICLES",
+  "bathyscaphe à pinces, 3 vues"
+ ],
+ "05023e4d-image.jpg": [
+  "05_VEHICLES",
+  "module de transport à réacteurs, 3 vues"
+ ],
+ "9490e296-image.jpg": [
+  "05_VEHICLES",
+  "vaisseau alien organique (méduse), 3 vues"
+ ],
+ "6a842cc4-image.jpg": [
+  "06_ROBOTICS",
+  "drone ROV à hélices, 3 vues"
+ ],
+ "539163dc-image.jpg": [
+  "05_VEHICLES",
+  "blindé 8x8 (APC-7 ?), 3 vues"
+ ],
+ "c7832bf9-image.jpg": [
+  "05_VEHICLES",
+  "vaisseau alien à pointes, 3 vues"
+ ],
+ "0b53405c-image.jpg": [
+  "08_FLOORS_WALLS",
+  "planche 6 portes (coffre, coulissante, vitrée ; ouvertes/fermées)"
+ ],
+ "c4ee9d5c-image.jpg": [
+  "08_FLOORS_WALLS",
+  "planche 6 murs (droit, angle, hublot, tuyaux, croisement, détruit)"
+ ],
+ "c06a09d8-image.jpg": [
+  "09_PROPS",
+  "planche 6 couverts (caisses, barrière, conteneur, sacs, chariot, bouclier)"
+ ],
+ "340de8fc-image.jpg": [
+  "09_PROPS",
+  "planche 6 escaliers, rampe, passerelle, garde-corps, colonne, échelle"
+ ],
+ "40e04ef8-image.jpg": [
+  "08_FLOORS_WALLS",
+  "planche 6 dalles (grille, pleine, câbles, trappe, trou, détruite)"
+ ],
+ "ae992597-image.jpg": [
+  "09_PROPS",
+  "planche 6 consoles (commandement, holotable, serveur, radio, écrans, valise)"
+ ],
+ "50daf366-image.jpg": [
+  "09_PROPS",
+  "planche 6 labo (table, cuve, poste, frigo, chariot, conteneur)"
+ ],
+ "40bef6d5-image.jpg": [
+  "09_PROPS",
+  "planche 6 machines (générateur, pompe, turbine, tuyaux, ventilation, chaudière)"
+ ],
+ "2e7e0bc5-image.jpg": [
+  "09_PROPS",
+  "planche 6 débris (générateur, gravats, tuyau percé, console cassée, nid alien, caisse)"
+ ],
+ "1254b7f8-image.png": [
+  "07_ENVIRONMENTS",
+  "key art : base Neptune extérieure + Léviathan"
+ ],
+ "1fc918f4-image.jpg": [
+  "11_UI_HUD",
+  "maquette HUD combat (escouade, armes, analyse)"
+ ],
+ "45376592-image.png": [
+  "11_UI_HUD",
+  "maquette HUD combat (portraits, actions, fin de tour)"
+ ],
+ "8fb70506-image.jpg": [
+  "07_ENVIRONMENTS",
+  "salle iso : porte coffre, passerelles (Némésis)"
+ ],
+ "5841d884-image.jpg": [
+  "07_ENVIRONMENTS",
+  "salle iso : cœur alien, passerelles"
+ ],
+ "4bf7614f-image.png": [
+  "01_CHARACTERS",
+  "fiche HUM-002 Okafor (vues, actions, armes)"
+ ],
+ "9916f62f-image.jpg": [
+  "07_ENVIRONMENTS",
+  "salle iso : labo cuves brisées infesté (Némésis)"
+ ],
+ "783f8964-image.jpg": [
+  "07_ENVIRONMENTS",
+  "salle iso : dock sous-marin"
+ ],
+ "aed7baa3-image.jpg": [
+  "07_ENVIRONMENTS",
+  "salle iso : porte coffre (doublon ?)"
+ ],
+ "3838d92e-image.jpg": [
+  "07_ENVIRONMENTS",
+  "salle iso : version nid alien"
+ ],
+ "5bbdd944-image.jpg": [
+  "07_ENVIRONMENTS",
+  "épave sous-marin en coupe"
+ ],
+ "822d409d-image.jpg": [
+  "07_ENVIRONMENTS",
+  "salle iso : commandement holotable"
+ ],
+ "37eec1d4-image.jpg": [
+  "07_ENVIRONMENTS",
+  "ruines immergées, passerelles en croix"
+ ],
+ "4bcab741-image.jpg": [
+  "07_ENVIRONMENTS",
+  "plateforme pétrolière sous tempête"
+ ],
+ "6fda1e47-image.jpg": [
+  "07_ENVIRONMENTS",
+  "port, conteneurs, pluie"
+ ],
+ "9e9d9fe5-image.jpg": [
+  "07_ENVIRONMENTS",
+  "cœur du nid alien (boss)"
+ ],
+ "b48e9bd2-image.jpg": [
+  "07_ENVIRONMENTS",
+  "paquebot englouti, escalier"
+ ],
+ "cf737663-image.jpg": [
+  "05_VEHICLES",
+  "sous-marin de transport (doublon)"
+ ],
+ "8b7d2fbb-image.jpg": [
+  "05_VEHICLES",
+  "sous-marin de transport (doublon)"
+ ],
+ "6b805cd1-image.jpg": [
+  "09_PROPS",
+  "cerveau en cuve (objectif / artefact)"
+ ],
+ "8059999e-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : artefact cristal en cuve"
+ ],
+ "331a8a8d-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : tissu alien au microscope"
+ ],
+ "ff53bf5d-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : capsule alien en cuve"
+ ],
+ "a1171dc2-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : minerai alien sous laser"
+ ],
+ "35bf9f75-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : arme plasma prototype"
+ ],
+ "ac9d9177-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : moteur alien à anneaux"
+ ],
+ "8300d77d-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : cerveau en cuve (doublon)"
+ ],
+ "0102fe22-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : noyau alien à runes"
+ ],
+ "b36d58cb-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : armure de plongée lourde"
+ ],
+ "dc0153c8-image.jpg": [
+  "12_PORTRAITS",
+  "recherche : monolithe alien"
+ ],
+ "c2df4a77-image.png": [
+  "01_CHARACTERS",
+  "planche Escouade Alpha (4 héros, armes, icônes HUD, palette)"
+ ],
+ "5779bea7-image.png": [
+  "01_CHARACTERS",
+  "fiches HUM-003 Lind + HUM-004 Moreau"
+ ],
+ "98a5999b-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "salle de commandement, globe holo"
+ ],
+ "b652e4a9-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "dortoirs"
+ ],
+ "adce6f57-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "laboratoire"
+ ],
+ "72a0b23d-image.jpg": [
+  "07_ENVIRONMENTS",
+  "salle de confinement, cuves violettes (Némésis)"
+ ],
+ "5091d60f-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "infirmerie"
+ ],
+ "f3b10d05-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "salle sonar"
+ ],
+ "f30ec967-image.jpg": [
+  "10_BASE_NEPTUNE",
+  "hangar sous-marin (dock)"
+ ],
+ "9b989662-image.png": [
+  "02_ALIENS",
+  "bestiaire XEN-001 à 008 (Rôdeur, Cracheur, Brute, Siphonmental, Œuve-mère, Sentinelle, Harponneur, Léviathan)"
+ ]
+}
