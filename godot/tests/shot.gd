@@ -20,6 +20,8 @@ func _initialize() -> void:
 		main._sync()
 		for fq in main.fog_quads.values():
 			fq.visible = false
+		for mm in main.fog_layers: # phase 3 : brouillard en MultiMesh, masqué pour les vues d'ensemble
+			mm.visible_instance_count = 0
 		var xy: PackedStringArray = args[3].split(",")
 		main.pivot.position = Vector3(float(xy[0]), 0, float(xy[1]))
 	for i in 40:

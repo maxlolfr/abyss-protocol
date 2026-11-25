@@ -39,6 +39,7 @@ var mobile := false
 var _auto_quality := false # sur téléphone : baisse automatique si les i/s restent faibles
 var _slow_t := 0.0
 var hull_mm := {} # coque en MultiMesh : la coupe côté caméra modifie les instances
+var amber_lamps: Array[Vector3] = [] # lampes-cages des parois (phase 3)
 var fog_layers: Array[MultiMesh] = [] # [inconnu, mémorisé]
 var overlay := Node3D.new()
 var artifact_node: Node3D
@@ -208,63 +209,139 @@ func _track(p: Vector2i, n: Node3D) -> void:
 # ---------- décor ----------
 
 func _build_env() -> void:
+	# phase 3 : étalonnage cinématographique (ACES), acier neutre, contraste, halo des sources lumineuses
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("070d16")
+	env.background_color = Color("03070c")
+	var sky := Sky.new()
+	var skm := ShaderMaterial.new()
+	skm.shader = load("res://view/shaders/reflect_sky.gdshader")
+	sky.sky_material = skm
+	sky.radiance_size = Sky.RADIANCE_SIZE_32
+	sky.process_mode = Sky.PROCESS_MODE_QUALITY
+	env.sky = sky
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY # reflets des métaux (phase 3)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("1e2a34") # refonte V1 : ambiance acier neutre, le bleu devient un accent
-	env.ambient_light_energy = 0.55
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.35
+	env.ambient_light_color = Color("2b3540")
+	env.ambient_light_energy = 0.75
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 1.25
+	env.tonemap_white = 6.0
 	env.fog_enabled = true
-	env.fog_light_color = Color("060d14")
-	env.fog_density = 0.025
+	env.fog_light_color = Color("040a10")
+	env.fog_density = 0.018
 	env.glow_enabled = true
-	env.glow_intensity = 0.5
-	env.glow_bloom = 0.0
-	env.glow_hdr_threshold = 1.2
+	env.glow_intensity = 0.7
+	env.glow_strength = 1.1
+	env.glow_bloom = 0.04
+	env.glow_hdr_threshold = 1.0
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.12
+	env.adjustment_saturation = 0.92
 	var we := WorldEnvironment.new()
 	world_env = we
 	we.environment = env
 	add_child(we)
-	# lumière froide filtrée par la surface, ombres dynamiques
-	sun.light_color = Color("c4d4e2")
-	sun.light_energy = 0.4
+	# lumière principale : plafonniers lointains, légèrement chauds ; ombres longues qui dessinent le relief
+	sun.light_color = Color("e4e8ec")
+	sun.light_energy = 0.95
 	sun.shadow_enabled = true
-	sun.rotation_degrees = Vector3(-55, 35, 0)
+	sun.shadow_bias = 0.04
+	sun.shadow_normal_bias = 1.2
+	sun.shadow_blur = 1.5
+	sun.rotation_degrees = Vector3(-58, 28, 0)
 	add_child(sun)
-	# fond marin : plancher océanique, roches et neige marine hors de la station
+	# contre-jour froid venu des baies (sans ombre) : sépare les silhouettes du fond
+	var rim := DirectionalLight3D.new()
+	rim.light_color = Color("5fa8c8")
+	rim.light_energy = 0.35
+	rim.rotation_degrees = Vector3(-25, 205, 0)
+	rim.shadow_enabled = false
+	add_child(rim)
 	var w := battle.grid.w
 	var h := battle.grid.h
-	var sea := _box(self, Vector3(80, 0.2, 80), Vector3(w / 2.0, -3.2, h / 2.0), _mat("seabed", Color("08131d"), 0, 1))
-	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var rock := _mat("rock", Color("0e1a26"), 0.1, 0.9)
-	for i in 14:
-		var a := i * 0.45
-		var r := 13.0 + (i % 4) * 2.5
-		var c := SphereMesh.new(); c.radius = 1.0 + (i % 3) * 0.5; c.height = c.radius * (1.0 + (i % 4) * 0.4); c.radial_segments = 7; c.rings = 4
-		var rk := _mesh(self, c, Vector3(w / 2.0 + cos(a) * r, -3.2 + c.height * 0.3, h / 2.0 + sin(a) * r), rock)
-		rk.rotation = Vector3(i * 0.3, i * 1.1, i * 0.2)
+	# abysse sous la station : halo bleu profond (shader), plus de « ciel étoilé »
+	var bd := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(140, 140)
+	bd.mesh = pm
+	var bm := ShaderMaterial.new()
+	bm.shader = load("res://view/shaders/backdrop.gdshader")
+	bm.set_shader_parameter("center", Vector2(w / 2.0, h / 2.0))
+	bd.material_override = bm
+	bd.position = Vector3(w / 2.0, -9.0, h / 2.0)
+	bd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(bd)
+	# coupe de la station : dalle porteuse épaisse, nervures et conduites extérieures sous la salle
+	var skirt := AbyssKit.Piece.new()
+	skirt.box(Vector3(w + 0.3, 1.4, h + 0.3), Vector3(w / 2.0, -0.85, h / 2.0), "hull", 0.0)
+	skirt.box(Vector3(w + 0.5, 0.18, h + 0.5), Vector3(w / 2.0, -0.2, h / 2.0), "armor_dark", 0.04)
+	skirt.box(Vector3(w - 1.0, 1.2, h - 1.0), Vector3(w / 2.0, -2.0, h / 2.0), "armor_dark", 0.1)
+	for i in range(0, w + 1, 2):
+		for zz in [-0.18, h + 0.18]:
+			skirt.box(Vector3(0.3, 2.3, 0.3), Vector3(i, -1.2, zz), "plate", 0.05)
+	for j in range(0, h + 1, 2):
+		for xx in [-0.18, w + 0.18]:
+			skirt.box(Vector3(0.3, 2.3, 0.3), Vector3(xx, -1.2, j), "plate", 0.05)
+	for k in 3:
+		var yy := -1.0 - k * 0.32
+		skirt.pipe(Vector3(-0.35, yy, -0.35 - k * 0.05), Vector3(w + 0.35, yy, -0.35 - k * 0.05), 0.09 - k * 0.02, "steel")
+		skirt.pipe(Vector3(-0.35 - k * 0.05, yy, -0.35), Vector3(-0.35 - k * 0.05, yy, h + 0.35), 0.09 - k * 0.02, "steel")
+		skirt.pipe(Vector3(-0.35, yy, h + 0.35 + k * 0.05), Vector3(w + 0.35, yy, h + 0.35 + k * 0.05), 0.09 - k * 0.02, "steel")
+		skirt.pipe(Vector3(w + 0.35 + k * 0.05, yy, -0.35), Vector3(w + 0.35 + k * 0.05, yy, h + 0.35), 0.09 - k * 0.02, "steel")
+	for i in range(1, w, 4): # feux de position sur la coque extérieure
+		skirt.box(Vector3(0.12, 0.06, 0.04), Vector3(i, -0.45, h + 0.48), "led_amber", 0.0)
+		skirt.box(Vector3(0.12, 0.06, 0.04), Vector3(i, -0.45, -0.48), "led_amber", 0.0)
+	var sk := MeshInstance3D.new()
+	sk.mesh = skirt.build()
+	sk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(sk)
+	# neige marine discrète, seulement autour de la station (elle ne doit plus ressembler à des étoiles)
 	snow = CPUParticles3D.new()
-	var sm := SphereMesh.new(); sm.radius = 0.02; sm.height = 0.04; sm.radial_segments = 4; sm.rings = 2
+	var sm := QuadMesh.new(); sm.size = Vector2(0.03, 0.03)
 	snow.mesh = sm
-	snow.material_override = _mat("snow", Color("c8e6f5"), 0, 1, Color("6fa8c0"), 0.6)
-	snow.amount = 90
-	snow.lifetime = 14.0
-	snow.preprocess = 14.0
+	snow.material_override = AbyssFx.mat("flash", true)
+	snow.amount = 60
+	snow.lifetime = 12.0
+	snow.preprocess = 12.0
 	snow.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	snow.emission_box_extents = Vector3(18, 1, 18)
+	snow.emission_box_extents = Vector3(w / 2.0 + 3, 2, h / 2.0 + 3)
 	snow.direction = Vector3(0.2, -1, 0.1)
-	snow.gravity = Vector3(0, -0.05, 0)
-	snow.initial_velocity_min = 0.1
-	snow.initial_velocity_max = 0.3
-	snow.position = Vector3(w / 2.0, 6, h / 2.0)
+	snow.gravity = Vector3(0, -0.03, 0)
+	snow.initial_velocity_min = 0.05
+	snow.initial_velocity_max = 0.15
+	snow.color = Color(0.5, 0.75, 0.9, 0.25)
+	snow.position = Vector3(w / 2.0, -1.5, h / 2.0)
 	add_child(snow)
+	# vignettage (guide le regard, efface les bords du cadre)
+	var vl := CanvasLayer.new()
+	vl.layer = -1
+	var vr := ColorRect.new()
+	vr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vm := ShaderMaterial.new()
+	vm.shader = load("res://view/shaders/vignette.gdshader")
+	vr.material = vm
+	vl.add_child(vr)
+	add_child(vl)
 
 func _bat(b: Dictionary, key: String, t: Transform3D) -> void:
 	if not b.has(key):
 		b[key] = []
 	b[key].append(t)
+
+## Caniveaux techniques sous caillebotis (phase 3, d'après ENV-007) : purement décoratifs, praticables.
+func _is_trench(p: Vector2i) -> bool:
+	if battle.map_id != "nemesis" or not battle.grid.inside(p) or battle.grid.tile(p) != AbyssGrid.T.FLOOR:
+		return false
+	return (p.y == 8 and p.x >= 4 and p.x <= 11) or (p.x == 8 and p.y >= 3 and p.y <= 5)
+
+## Parois d'une fosse (bassin, caniveau) sur les côtés qui ne donnent pas sur la même fosse.
+func _pit_sides(batch: Dictionary, p: Vector2i, c: Vector3, key: String, same: Callable) -> void:
+	for d in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+		if not same.call(p + d):
+			_bat(batch, key, Transform3D(Basis(Vector3.UP, atan2(float(d.x), float(d.y))), Vector3(c.x, 0, c.z)))
 
 func _build_map() -> void:
 	var g := battle.grid
@@ -284,17 +361,16 @@ func _build_map() -> void:
 				var edge := x == 0 or y == 0 or x == g.w - 1 or y == g.h - 1
 				var win := edge and (x + y) % 3 == 0 and not ((x == 0 or x == g.w - 1) and (y == 0 or y == g.h - 1))
 				var n := Vector3(-1 if x == 0 else (1 if x == g.w - 1 else 0), 0, -1 if y == 0 else (1 if y == g.h - 1 else 0))
-				var hk := "hull_w" if win else "hull"
+				# phase 3 : trois modules de paroi en relief (panneau à tuyaux, ventilation + lampe-cage, baie)
+				var hk := "hull_w" if win else ("hull_b" if (x * 3 + y * 5) % 4 == 1 else "hull")
 				_bat(batch, hk, Transform3D(Basis(Vector3.UP, atan2(n.x, n.z)), hn.position))
-				if win and (x + y) % 2 == 0:
-					var beam := K.spawn("beam", K.light_beam, hn, Vector3.ZERO, atan2(-n.x, -n.z))
-					beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				# équipements fixés à la paroi intérieure : conduites (PROP-006), excroissances aliennes (KIT-009)
-				if not win and edge and (x * 5 + y) % 4 == 0 and n.length() == 1.0:
-					var pipe := K.prop("p006_s1", 0.42)
-					pipe.position = -n * 0.56 + Vector3(0, 1.75, 0)
-					hn.add_child(pipe)
-				elif not win and edge and battle.map_id == "nemesis" and x == 0 and y >= 5 and y <= 8:
+				if n.length() == 1.0 and g.inside(p - Vector2i(int(n.x), int(n.z))) and g.z(p - Vector2i(int(n.x), int(n.z))) < 0.5 \
+						and g.tile(p - Vector2i(int(n.x), int(n.z))) != AbyssGrid.T.WATER:
+					_bat(batch, "ao_edge", Transform3D(Basis(Vector3.UP, atan2(n.x, n.z)), hn.position))
+				if hk == "hull_b" and n.length() == 1.0:
+					amber_lamps.append(hn.position - n * 0.75 + Vector3(0, 1.78, 0))
+				# excroissances aliennes (KIT-009) sur la paroi ouest contaminée
+				if not win and edge and battle.map_id == "nemesis" and x == 0 and y >= 5 and y <= 8:
 					var growth := K.prop("k009_1", 1.1)
 					growth.position = -n * 0.55 + Vector3(0, 0.2, 0)
 					hn.add_child(growth)
@@ -314,6 +390,11 @@ func _build_map() -> void:
 				_bat(batch, "deck_high", Transform3D(Basis.IDENTITY, Vector3(c.x, 0, c.z)))
 			elif t == AbyssGrid.T.WATER:
 				_bat(batch, "pool", Transform3D(Basis.IDENTITY, c))
+				_pit_sides(batch, p, c, "pool_side", func(q): return g.tile(q) == AbyssGrid.T.WATER)
+			elif _is_trench(p):
+				var along_x := _is_trench(p + Vector2i(1, 0)) or _is_trench(p - Vector2i(1, 0))
+				_bat(batch, "trench", Transform3D(Basis(Vector3.UP, 0.0 if along_x else PI / 2), c))
+				_pit_sides(batch, p, c, "trench_side", _is_trench)
 			else:
 				_bat(batch, "floor", Transform3D(Basis.IDENTITY, c))
 				if battle.in_evac(p): # pourtour du sas seulement
@@ -346,7 +427,8 @@ func _build_map() -> void:
 				_track(p, n)
 	# sols, passerelles et bassins : un objet par type de dalle (MultiMesh)
 	var makers := {"floor": K.floor_tile.bind(false), "evac_edge": K.evac_edge, "deck_high": K.deck_high, "pool": K.pool,
-		"hull": K.hull.bind(false), "hull_w": K.hull.bind(true)}
+		"hull": K.hull.bind(0), "hull_b": K.hull.bind(1), "hull_w": K.hull.bind(2), "ao_edge": K.ao_edge,
+		"pool_side": K.pit_side.bind(0.72, true), "trench_side": K.pit_side.bind(0.5, false), "trench": K.trench}
 	for key in batch:
 		var mmi := K.batch(self, key, makers[key], batch[key])
 		if key.begins_with("hull"):
@@ -533,9 +615,9 @@ func _apply_quality(q: String) -> void:
 	RenderingServer.directional_shadow_atlas_set_size(2048 if q == "haute" else 1024, true)
 	world_env.environment.glow_enabled = not lo
 	# allégée : les lampes coupées sont compensées par une ambiance et un soleil plus forts (gratuits)
-	world_env.environment.ambient_light_energy = 1.25 if lite else 0.55
-	world_env.environment.ambient_light_color = Color("2a3a48") if lite else Color("1e2a34")
-	sun.light_energy = 0.85 if lite else 0.4
+	world_env.environment.ambient_light_energy = 1.3 if lite else 0.75
+	world_env.environment.ambient_light_color = Color("34404c") if lite else Color("2b3540")
+	sun.light_energy = 1.2 if lite else 0.95
 	snow.visible = not lo
 	for id in unit_nodes:
 		var lamp: Node = unit_nodes[id].find_child("Lamp", true, false)

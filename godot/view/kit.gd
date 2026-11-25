@@ -9,6 +9,8 @@ extends RefCounted
 const TEX := "res://assets/textures/%s_%s.png"
 static var _mats := {}
 static var _meshes := {}
+## matériaux à shader (phase 3) : eau, fond de bassin à caustiques, vue sur l'océan
+const SHADERS := {"water": "water", "pool_floor": "caustic_floor", "ocean": "ocean"}
 
 # ---------- matériaux ----------
 
@@ -16,8 +18,41 @@ static var _meshes := {}
 static func mat(key: String) -> Material:
 	if _mats.has(key):
 		return _mats[key]
+	if key in SHADERS:
+		var sm := ShaderMaterial.new()
+		sm.shader = load("res://view/shaders/%s.gdshader" % SHADERS[key])
+		sm.set_shader_parameter("caus", load("res://assets/textures/caustics.png"))
+		sm.set_shader_parameter("nmap", load("res://assets/textures/water_normal.png"))
+		sm.set_shader_parameter("albedo_tex", load(TEX % ["grate", "albedo"]))
+		_mats[key] = sm
+		return sm
 	var m := StandardMaterial3D.new()
 	match key:
+		"grate_cut":
+			m.albedo_texture = load("res://assets/textures/fx_grate_cut.png")
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+			m.alpha_scissor_threshold = 0.5
+			m.uv1_triplanar = true
+			m.uv1_world_triplanar = true
+			m.uv1_scale = Vector3.ONE
+			m.albedo_color = Color(0.5, 0.52, 0.55)
+			m.metallic = 0.6
+			m.roughness = 0.62
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		"ao":
+			# ombre de contact peinte (phase 3) : assombrit le pied des parois, sans calcul d'éclairage
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			var ag := Gradient.new()
+			ag.set_color(0, Color(0, 0, 0, 0.62))
+			ag.set_color(1, Color(0, 0, 0, 0.0))
+			var at := GradientTexture2D.new()
+			at.gradient = ag
+			at.fill_to = Vector2(0, 1)
+			at.width = 4
+			at.height = 64
+			m.albedo_texture = at
+			m.disable_receive_shadows = true
 		"plate", "hull", "floor", "grate", "hazard", "crate":
 			m.albedo_texture = load(TEX % [key, "albedo"])
 			m.normal_enabled = true
@@ -91,7 +126,7 @@ static func mat(key: String) -> Material:
 			m.disable_receive_shadows = true
 		_:
 			# néons : cyan, ambre, rouge, vert, violet
-			var c := {"led_cyan": Color("39d9ef"), "led_amber": Color("ffb547"), "led_red": Color("e5484d"),
+			var c := {"led_cyan": Color("39d9ef"), "led_cyan_soft": Color("1f7f8f"), "led_amber": Color("ffb547"), "led_red": Color("e5484d"),
 				"led_green": Color("52c99a"), "led_violet": Color("9863f5")}.get(key, Color.MAGENTA) as Color
 			_flat(m, c.darkened(0.4), 0.0, 0.4)
 			m.emission_enabled = true
@@ -283,23 +318,70 @@ static func wall(h: float) -> Piece:
 	p.box(Vector3(0.1, 0.06, 0.05), Vector3(-0.2, h - 0.25, -0.1), "led_amber", 0.01)
 	return p
 
-## Coque de la station (KIT-004) : soubassement, montants, hublot sur l'océan ou panneau nervuré.
-static func hull(window: bool) -> Piece:
+## Coque de la station (phase 3, d'après KIT-001 et ENV-007) : paroi monumentale en relief.
+## Soubassement, pilastre porteur, panneau en retrait encadré de lisses, corniche et conduite haute.
+## Variantes : 0 = panneau et faisceau de tuyaux, 1 = grille de ventilation + lampe-cage ambre, 2 = grande baie sur l'océan.
+## L'intérieur de la salle est du côté -Z (la pièce est tournée pour que +Z regarde dehors).
+static func hull(variant: int) -> Piece:
 	var p := Piece.new()
-	p.box(Vector3(1.0, 0.95, 1.0), Vector3(0, 0.475, 0), "hull", 0.03)
-	p.box(Vector3(1.02, 0.08, 1.02), Vector3(0, 0.95, 0), "steel", 0.02)
-	p.box(Vector3(1.0, 0.25, 1.0), Vector3(0, 2.28, 0), "hull", 0.04)
-	if window:
-		for sx in [-0.44, 0.44]:
-			for sz in [-0.44, 0.44]:
-				p.box(Vector3(0.12, 1.2, 0.12), Vector3(sx, 1.58, sz), "plate", 0.03)
-		p.box(Vector3(0.9, 1.15, 0.9), Vector3(0, 1.58, 0), "ocean", 0.0)
-		p.box(Vector3(0.96, 1.2, 0.96), Vector3(0, 1.58, 0), "glass", 0.08)
-	else:
-		p.box(Vector3(1.0, 1.25, 1.0), Vector3(0, 1.58, 0), "hull", 0.03)
-		for sx in [-0.3, 0.0, 0.3]:
-			p.box(Vector3(0.08, 1.2, 1.04), Vector3(sx, 1.58, 0), "steel", 0.02)
+	var H := 2.75
+	p.box(Vector3(1.0, H, 0.62), Vector3(0, H / 2, 0.19), "hull", 0.0) # masse de la paroi (côté extérieur)
+	p.box(Vector3(1.0, 0.03, 1.0), Vector3(0, H + 0.015, 0.0), "dark", 0.0) # chaperon sombre (lecture en vue de dessus)
+	p.box(Vector3(1.0, 0.42, 0.2), Vector3(0, 0.21, -0.27), "armor_dark", 0.03) # soubassement
+	p.box(Vector3(1.0, 0.05, 0.24), Vector3(0, 0.44, -0.27), "steel", 0.015)
+	p.box(Vector3(0.16, H, 0.26), Vector3(-0.42, H / 2, -0.24), "plate", 0.03) # pilastre porteur
+	p.box(Vector3(0.2, 0.3, 0.3), Vector3(-0.42, H - 0.5, -0.27), "plate", 0.04) # chapiteau
+	p.box(Vector3(1.0, 0.24, 0.42), Vector3(0, H - 0.12, -0.17), "plate", 0.03) # corniche
+	p.box(Vector3(1.0, 0.025, 0.02), Vector3(0, H - 0.27, -0.385), "led_cyan_soft", 0.0) # filet lumineux
+	p.pipe(Vector3(-0.5, H - 0.42, -0.31), Vector3(0.5, H - 0.42, -0.31), 0.06, "steel")
+	p.pipe(Vector3(-0.5, H - 0.55, -0.33), Vector3(0.5, H - 0.55, -0.33), 0.035, "brass")
+	match variant:
+		0:
+			p.box(Vector3(0.68, 1.5, 0.08), Vector3(0.08, 1.25, -0.16), "plate", 0.02) # panneau en retrait
+			p.box(Vector3(0.84, 0.07, 0.12), Vector3(0.08, 2.03, -0.18), "steel", 0.015)
+			p.box(Vector3(0.84, 0.07, 0.12), Vector3(0.08, 0.5, -0.18), "steel", 0.015)
+			for i in 4: # faisceau de tuyaux (KIT-001 n°4)
+				var y := 0.68 + i * 0.1
+				p.pipe(Vector3(-0.5, y, -0.27 - (i % 2) * 0.03), Vector3(0.5, y, -0.27 - (i % 2) * 0.03), 0.032 - (i % 2) * 0.008, "steel" if i % 3 else "brass")
+			for sx in [-0.15, 0.3]:
+				p.box(Vector3(0.05, 0.5, 0.1), Vector3(sx, 0.83, -0.31), "dark", 0.01)
+			p.pipe(Vector3(0.3, 0.45, -0.25), Vector3(0.3, 2.0, -0.25), 0.045, "steel") # descente verticale
+			p.box(Vector3(0.14, 0.2, 0.06), Vector3(0.0, 1.55, -0.21), "dark", 0.01) # boîtier
+			p.box(Vector3(0.04, 0.04, 0.02), Vector3(0.03, 1.6, -0.24), "led_green", 0.0)
+		1:
+			p.box(Vector3(0.68, 1.5, 0.08), Vector3(0.08, 1.25, -0.16), "plate", 0.02)
+			p.box(Vector3(0.5, 0.62, 0.05), Vector3(0.1, 1.0, -0.21), "dark", 0.01) # grille de ventilation
+			for i in 7:
+				p.box(Vector3(0.48, 0.03, 0.05), Vector3(0.1, 0.74 + i * 0.087, -0.235), "steel", 0.005, Vector3(25, 0, 0))
+			p.box(Vector3(0.84, 0.07, 0.12), Vector3(0.08, 2.03, -0.18), "steel", 0.015)
+			# lampe-cage ambre (ENV-007) au-dessus de la grille
+			p.add(cyl(0.07, 0.07, 0.16, 10), Vector3(0.1, 1.78, -0.29), "led_amber")
+			p.add(cyl(0.09, 0.09, 0.04, 10), Vector3(0.1, 1.68, -0.29), "dark")
+			p.add(cyl(0.09, 0.09, 0.04, 10), Vector3(0.1, 1.88, -0.29), "dark")
+			for a in 4:
+				var d := Vector3(cos(a * PI / 2), 0, sin(a * PI / 2)) * 0.085
+				p.box(Vector3(0.015, 0.2, 0.015), Vector3(0.1, 1.78, -0.29) + d, "dark", 0.0)
+		2:
+			# grande baie : cadre épais chanfreiné, vitre, océan derrière
+			p.box(Vector3(1.0, 0.5, 0.3), Vector3(0, 0.45 + 0.25, -0.15), "plate", 0.03) # allège
+			p.box(Vector3(1.0, 0.18, 0.34), Vector3(0, 0.96, -0.2), "steel", 0.05) # appui
+			p.box(Vector3(1.0, 0.2, 0.34), Vector3(0, 2.34, -0.2), "steel", 0.05) # linteau
+			for sx in [-0.46, 0.46]:
+				p.box(Vector3(0.08, 1.5, 0.3), Vector3(sx, 1.65, -0.18), "steel", 0.03)
+			p.box(Vector3(0.05, 1.3, 0.06), Vector3(0.12, 1.65, -0.1), "steel", 0.01) # meneau
+			p.box(Vector3(0.92, 1.3, 0.02), Vector3(0, 1.65, -0.08), "glass", 0.0)
+			var q := QuadMesh.new()
+			q.size = Vector2(1.0, 1.6)
+			p.add(q, Vector3(0, 1.65, 0.45), "ocean", Vector3(0, 180, 0))
+			for sx in [-0.5, 0.5]: # joues intérieures (embrasure)
+				p.box(Vector3(0.02, 1.4, 0.6), Vector3(sx * 0.98, 1.65, 0.18), "hull", 0.0)
 	return p
+
+## Ombre de contact au pied d'une paroi : bande dégradée posée au sol, côté -Z (intérieur).
+static func ao_edge() -> Piece:
+	var q := PlaneMesh.new()
+	q.size = Vector2(1.0, 0.7)
+	return Piece.new().add(q, Vector3(0, 0.012, -0.85), "ao", Vector3(0, 180, 0))
 
 ## Caisse de munitions militaire (KIT-005) : couvert partiel.
 static func crate() -> Piece:
@@ -342,9 +424,20 @@ static func console(green: bool) -> Piece:
 	return p
 
 ## Passerelle (KIT-004) : soubassement plein, caillebotis, nez de dalle ambre.
+## Phase 3 : la mezzanine repose sur une ossature visible (poutres en I, entretoises, panneaux en retrait).
 static func deck_high() -> Piece:
-	var p := Piece.new().box(Vector3(0.98, 0.92, 0.98), Vector3(0, 0.46, 0), "hull", 0.02)
+	var p := Piece.new().box(Vector3(0.8, 0.78, 0.8), Vector3(0, 0.45, 0), "armor_dark", 0.02) # noyau en retrait
+	p.box(Vector3(1.0, 0.14, 1.0), Vector3(0, 0.86, 0), "plate", 0.03) # longeron sous plancher
 	p.box(Vector3(1.0, 0.07, 1.0), Vector3(0, 0.965, 0), "grate", 0.01)
+	for sx in [-0.44, 0.44]:
+		for sz in [-0.44, 0.44]:
+			p.box(Vector3(0.12, 0.84, 0.12), Vector3(sx, 0.42, sz), "steel", 0.02) # poteaux
+	for r in 4: # entretoises en X sur chaque face
+		var rot := r * 90.0
+		var o := Vector3(0, 0, 0.43).rotated(Vector3.UP, deg_to_rad(rot))
+		p.box(Vector3(1.05, 0.05, 0.04), o + Vector3(0, 0.45, 0), "dark", 0.01, Vector3(0, rot, 38))
+		p.box(Vector3(1.05, 0.05, 0.04), o + Vector3(0, 0.45, 0), "dark", 0.01, Vector3(0, rot, -38))
+	p.box(Vector3(1.0, 0.1, 1.0), Vector3(0, 0.05, 0), "dark", 0.01) # semelle
 	return p
 
 ## Garde-corps sur un bord de passerelle (le bord est en +Z ; tourner la pièce pour les autres côtés).
@@ -372,10 +465,33 @@ static func stairs(z0: float, z1: float) -> Piece:
 		p.pipe(Vector3(-0.5, z0 + 0.95, sz), Vector3(0.5, z1 + 0.95, sz), 0.02, "steel")
 	return p
 
-## Bassin : fond en caillebotis immergé + surface d'eau.
+## Bassin (phase 3) : fosse de 0,7 m, fond à caustiques, eau animée au shader.
 static func pool() -> Piece:
-	var p := Piece.new().box(Vector3(1.0, 0.06, 1.0), Vector3(0, -0.2, 0), "grate", 0.0)
-	p.box(Vector3(1.0, 0.03, 1.0), Vector3(0, -0.02, 0), "water", 0.0)
+	var p := Piece.new().box(Vector3(1.0, 0.06, 1.0), Vector3(0, -0.7, 0), "pool_floor", 0.0)
+	var q := PlaneMesh.new()
+	q.size = Vector2(1.0, 1.0)
+	p.add(q, Vector3(0, -0.09, 0), "water")
+	return p
+
+## Paroi de bassin ou de caniveau sur le bord +Z : béton d'acier sombre, margelle à bande de danger.
+static func pit_side(depth: float, lip: bool) -> Piece:
+	var p := Piece.new().box(Vector3(1.0, depth, 0.06), Vector3(0, -depth / 2, 0.47), "armor_dark", 0.0)
+	p.box(Vector3(1.0, 0.04, 0.04), Vector3(0, -depth * 0.45, 0.43), "steel", 0.0) # cornière
+	if lip:
+		p.box(Vector3(1.0, 0.05, 0.12), Vector3(0, 0.0, 0.47), "steel", 0.015)
+		p.box(Vector3(1.0, 0.012, 0.06), Vector3(0, 0.03, 0.47), "hazard", 0.003)
+	return p
+
+## Caniveau technique (ENV-007) : fosse sous caillebotis ajouré, conduites et lueur cyan au fond.
+static func trench() -> Piece:
+	var p := Piece.new().box(Vector3(1.0, 0.04, 1.0), Vector3(0, -0.5, 0), "dark", 0.0)
+	p.pipe(Vector3(-0.5, -0.36, -0.2), Vector3(0.5, -0.36, -0.2), 0.09, "steel")
+	p.pipe(Vector3(-0.5, -0.4, 0.12), Vector3(0.5, -0.4, 0.12), 0.06, "brass")
+	p.pipe(Vector3(-0.5, -0.42, 0.32), Vector3(0.5, -0.42, 0.32), 0.04, "steel")
+	p.box(Vector3(1.0, 0.02, 0.03), Vector3(0, -0.47, 0.0), "led_cyan", 0.0)
+	for sx in [-0.25, 0.25]:
+		p.box(Vector3(0.06, 0.2, 0.9), Vector3(sx, -0.4, 0.0), "dark", 0.01) # supports
+	p.box(Vector3(1.0, 0.03, 1.0), Vector3(0, -0.02, 0), "grate_cut", 0.0)
 	return p
 
 ## Berceau de confinement Némésis (ENV-007) : socle praticable, anneau émetteur suspendu, cuve brisée.

@@ -59,6 +59,46 @@ def rivets(div_x, div_y, inset=0.025, r=0.007):
     return h
 
 
+def brushed():
+    """Acier brossé : stries horizontales fines (phase 3)."""
+    a = rng.random((N, 1)) * np.ones((1, N))
+    a = blur(a + rng.random((N, N)) * 0.15, 0.4)
+    return (a - a.min()) / (a.max() - a.min() + 1e-9)
+
+
+def caustics():
+    """Caustiques sous-marines répétables (bassins, vue sur l'océan) - phase 3."""
+    acc = np.zeros((N, N))
+    for k in range(3):
+        n = noise(5 + k * 3, 2)
+        ridge = 1 - np.abs(n - 0.5) * 2
+        acc += ridge ** 8
+    acc = np.clip(acc / acc.max() * 1.6, 0, 1)
+    Image.fromarray((acc * 255).astype(np.uint8), "L").save(f"{OUT}/caustics.png", optimize=True)
+
+
+def water_normal():
+    """Normales d'ondulation pour l'eau (deux couches défilantes dans le shader) - phase 3."""
+    h = noise(10, 4) * 0.7 + noise(26, 3) * 0.3
+    gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * 18
+    gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * 18
+    n = np.dstack([-gx, gy, np.ones_like(gx)])
+    n /= np.linalg.norm(n, axis=2, keepdims=True)
+    Image.fromarray(((n * 0.5 + 0.5) * 255).astype(np.uint8), "RGB").save(f"{OUT}/water_normal.png", optimize=True)
+
+
+def grate_cut():
+    """Caillebotis ajouré (couvercle des caniveaux techniques, phase 3) : RGBA, trous transparents."""
+    bars = (np.abs(((xx * 12) % 1) - 0.5) < 0.2).astype(float)
+    cross = (np.abs(((yy * 3) % 1) - 0.5) < 0.08).astype(float)
+    frame = ((xx < 0.03) | (xx > 0.97) | (yy < 0.03) | (yy > 0.97)).astype(float)
+    m = np.maximum(np.maximum(bars, cross), frame)
+    n = noise(20, 4)
+    col = hexcol("737b82") * (0.75 + 0.35 * n[..., None])
+    col, d = grime(col, hexcol("2b241a"), 0.3, streak=False)
+    save_rgba("grate_cut", col, m)
+
+
 def hexcol(h):
     return np.array([int(h[i:i + 2], 16) for i in (0, 2, 4)]) / 255.0
 
@@ -92,8 +132,8 @@ def metal_plate():
     """Cloisons et équipements : acier militaire peint, plaques 0,5 m, rivets, usure."""
     h, e = panels(2, 2)
     rv = rivets(2, 2)
-    n = noise(24, 4)
-    col = hexcol("4b5d6d") * (0.88 + 0.18 * n[..., None])
+    n = noise(24, 4) * 0.6 + brushed() * 0.4
+    col = hexcol("5f686f") * (0.88 + 0.18 * n[..., None])
     col, d = grime(col, hexcol("2a2620"), 0.35)
     edge = np.clip(1 - e / 0.02, 0, 1) * (noise(40, 3) > 0.55)  # peinture écaillée sur les arêtes
     col = col * (1 - edge[..., None]) + hexcol("8e9aa3") * edge[..., None]
@@ -108,8 +148,8 @@ def hull():
     """Coque : grandes plaques sombres 1 m, nervures, boulons, condensation."""
     h, e = panels(1, 2, groove=0.008, bevel=0.02)
     rv = rivets(1, 2, inset=0.03, r=0.01)
-    n = noise(12, 5)
-    col = hexcol("26394a") * (0.85 + 0.25 * n[..., None])
+    n = noise(12, 5) * 0.6 + brushed() * 0.4
+    col = hexcol("4b545b") * (0.85 + 0.25 * n[..., None])
     col, d = grime(col, hexcol("0d1a24"), 0.45)
     col *= (1 - (1 - h)[..., None] * 0.7)
     rough = 0.35 + 0.35 * noise(30, 3) * (1 - d) + 0.2 * d  # zones humides plus brillantes
@@ -139,14 +179,14 @@ def floor():
     sg = np.where((np.floor(u) + np.floor(v)) % 2 > 0, 1, -1)
     ra, rb = (lu + sg * lv) / 1.414, (lu - sg * lv) / 1.414
     tread = np.clip(1 - (ra / 0.36) ** 2 - (rb / 0.09) ** 2, 0, 1) ** 0.5 * (kind == 0)
-    slots = ((np.abs(((xx * 30) % 1) - 0.5) < 0.12) & (np.abs(((yy * 6) % 1) - 0.5) < 0.3)).astype(float) * (kind == 2)
+    slots = ((np.abs(((xx * 30) % 1) - 0.5) < 0.12) & (np.abs(((yy * 6) % 1) - 0.5) < 0.3)).astype(float) * (kind == 2) * (np.abs(((yy * 2) % 1) - 0.5) < 0.12)
     rv = np.zeros((N, N))
     near_edge = (edge > 0.012) & (edge < 0.022)
     rv = near_edge * ((((xx + yy) * 40) % 1) < 0.18) * (kind == 1)
     n = noise(16, 5)
-    col = hexcol("43484d") * (0.82 + 0.2 * n[..., None]) * (0.9 + 0.18 * tint[..., None])
+    col = hexcol("5a5f64") * (0.88 + 0.14 * n[..., None]) * (0.95 + 0.08 * tint[..., None])
     worn = blur(noise(4, 3), 3) > 0.5
-    col = col + hexcol("9aa3aa") * (tread * worn)[..., None] * 0.3
+    col = col + hexcol("9aa3aa") * (tread * worn)[..., None] * 0.18
     col = col * (1 - slots[..., None] * 0.75)
     oil = np.clip((noise(3, 4) - 0.66) * 6, 0, 1)
     col = col * (1 - oil[..., None] * 0.45)
@@ -170,7 +210,7 @@ def grate():
     m = np.maximum(bars, cross)
     m = blur(m, 0.6)
     n = noise(20, 4)
-    col = hexcol("55636e") * (0.8 + 0.3 * n[..., None]) * m[..., None] + hexcol("05090d") * (1 - m[..., None])
+    col = hexcol("6e767c") * (0.8 + 0.3 * n[..., None]) * m[..., None] + hexcol("05090d") * (1 - m[..., None])
     col, d = grime(col, hexcol("2b241a"), 0.3, streak=False)
     save("grate", col, m, 0.4 + 0.3 * d + 0.3 * (1 - m), strength=10)
 
@@ -261,6 +301,6 @@ def fx():
 
 
 if __name__ == "__main__":
-    for f in (metal_plate, hull, floor, grate, hazard, crate, screen, flesh, fabric, fx, light_pool):
+    for f in (metal_plate, hull, floor, grate, hazard, crate, screen, flesh, fabric, fx, light_pool, caustics, water_normal, grate_cut):
         f()
         print("ok", f.__name__)

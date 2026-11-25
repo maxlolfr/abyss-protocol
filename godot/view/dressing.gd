@@ -98,6 +98,12 @@ func _light(at: Vector3, col: Color, rng: float, energy: float, pool_r := 0.0, p
 	return o
 
 func _lights(nem: bool) -> void:
+	# phase 3 : lampes-cages ambre des parois -> flaque chaude au sol (gratuite) + halo sur le mur
+	for at in main.amber_lamps:
+		_pool(Vector3(at.x, 0.025, at.z), Color("ffa040"), 1.25, 0.32)
+		var halo := _pool(at + Vector3(0, 0, 0), Color("ffb060"), 0.5, 0.35)
+		halo.rotation_degrees = Vector3(90, 0, 0)
+		halo.set_meta("billboard", true)
 	if not nem:
 		return
 	# lumière industrielle chaude sur la cuve, blanche sur le sas, froide sur les mezzanines
