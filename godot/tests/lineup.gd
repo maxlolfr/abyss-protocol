@@ -20,10 +20,10 @@ func _initialize() -> void:
 	for x in range(-3, 4):
 		for z in range(-1, 2):
 			AbyssKit.spawn("floor", AbyssKit.floor_tile.bind(false), w, Vector3(x, 0, z))
-	var kinds := ["soldier", "nereide", "carapace", "spectre"]
+	var kinds := ["soldier", "soldier", "nereide", "carapace", "spectre"]
 	for i in kinds.size():
-		var n := AbyssRig.build(kinds[i])
-		n.position = Vector3(-2.4 + i * 1.6, 0, 0)
+		var n := AbyssRig.build(kinds[i], "s2" if i == 1 else "")
+		n.position = Vector3(-2.8 + i * 1.4, 0, 0)
 		n.rotation_degrees.y = yaw
 		w.add_child(n)
 	var cam := Camera3D.new()

@@ -111,11 +111,11 @@ func finish() -> void:
 	ap.add_animation_library("", lib)
 	ap.autoplay = "idle"
 
-static func build(kind: String) -> Node3D:
+static func build(kind: String, variant := "") -> Node3D:
 	var n := Node3D.new()
 	var r := AbyssRig.new(n)
 	match kind:
-		"soldier": r._soldier()
+		"soldier": r._soldier(variant)
 		"nereide": r._nereide()
 		"carapace": r._carapace()
 		"spectre": r._spectre()
@@ -177,9 +177,14 @@ func _human_anims(lean := 0.0) -> void:
 
 # ---------- plongeur de combat ----------
 
-func _soldier() -> void:
-	var suit := AbyssKit.tinted("suit", "fabric", Color.WHITE, 0.05)
+## Planches CHAR-HUM-001 Walker et HUM-002 Okafor : combinaison marine, plaques acier canon de fusil,
+## ceinturon à poches cuir, accents cyan ; Okafor (lourd, harpon) a des épaulières et un sac ambre.
+func _soldier(variant: String) -> void:
+	var suit := AbyssKit.tinted("suit", "fabric", Color(0.5, 0.6, 0.85), 0.05)
 	var armor := AbyssKit.mat("armor")
+	var heavy := variant == "s2"
+	var accent := AbyssKit.tinted("armor_amber", "plate", Color(0.85, 0.62, 0.22), 0.6) if heavy else armor
+	var leather := AbyssKit.tinted("leather", "fabric", Color(1.25, 0.85, 0.55), 0.0)
 	var dark := AbyssKit.mat("dark")
 	var steel := AbyssKit.mat("steel")
 	var rubber := AbyssKit.mat("rubber")
@@ -193,7 +198,8 @@ func _soldier() -> void:
 		box("Knee" + L, Vector3(0.14, 0.12, 0.09), Vector3(0, 0, 0.07), armor)
 		box("Knee" + L, Vector3(0.12, 0.26, 0.06), Vector3(0, -0.21, 0.06), armor)
 		box("Foot" + L, Vector3(0.14, 0.11, 0.28), Vector3(0, -0.035, 0.05), rubber)
-		box("Arm" + L, Vector3(0.18, 0.13, 0.22), Vector3(0.03 * s, 0.01, 0), armor, Vector3(0, 0, -15 * s))
+		box("Arm" + L, Vector3(0.2 if heavy else 0.18, 0.14, 0.23), Vector3(0.03 * s, 0.01, 0), accent, Vector3(0, 0, -15 * s))
+		box("Elbow" + L, Vector3(0.025, 0.1, 0.03), Vector3(0.055 * s, -0.14, 0.03), AbyssKit.mat("led_cyan"))
 		box("Elbow" + L, Vector3(0.11, 0.17, 0.11), Vector3(0, -0.14, 0), armor)
 		part("Elbow" + L, _sph(0.055, 0.1), Vector3(0, -0.3, 0), dark)
 	# torse : combinaison, plastron, sangles, sac dorsal à deux bouteilles, collerette
@@ -202,17 +208,20 @@ func _soldier() -> void:
 	box("Torso", Vector3(0.3, 0.1, 0.07), Vector3(0, 0.12, 0.12), armor)
 	for s in [1, -1]:
 		box("Torso", Vector3(0.07, 0.12, 0.05), Vector3(0.12 * s, 0.22, 0.18), dark) # poches
+		box("Hips", Vector3(0.08, 0.1, 0.07), Vector3(0.15 * s, 0.03, 0.13), leather) # poches du ceinturon
 		part("Torso", AbyssKit.cyl(0.075, 0.075, 0.52, 14), Vector3(0.095 * s, 0.33, -0.27), steel)
 		part("Torso", _sph(0.075, 0.07, true), Vector3(0.095 * s, 0.59, -0.27), steel)
-	box("Torso", Vector3(0.34, 0.44, 0.1), Vector3(0, 0.32, -0.17), dark)
+	box("Torso", Vector3(0.34, 0.44, 0.1), Vector3(0, 0.32, -0.17), accent if heavy else dark)
+	box("Torso", Vector3(0.12, 0.03, 0.01), Vector3(0, 0.36, -0.225), AbyssKit.mat("led_cyan"))
 	box("Torso", Vector3(0.05, 0.04, 0.02), Vector3(0.1, 0.48, 0.18), AbyssKit.mat("led_cyan"))
 	var collar := TorusMesh.new()
 	collar.inner_radius = 0.1; collar.outer_radius = 0.17; collar.rings = 16; collar.ring_segments = 8
 	part("Torso", collar, Vector3(0, 0.56, 0), steel)
 	# casque de scaphandre : coque, visière cyan, phare, tuyau
 	part("Head", _sph(0.165, 0.32), Vector3(0, 0.12, 0), armor)
-	var visor := AbyssKit.tinted("visor", "screen", Color(0.2, 0.55, 0.7), 0.9, Color("1fa8c8"))
-	part("Head", _sph(0.13, 0.2), Vector3(0, 0.12, 0.065), visor, Vector3.ZERO, Vector3(1.05, 0.62, 0.9))
+	part("Head", _sph(0.1, 0.18), Vector3(0, 0.1, 0.06), AbyssKit.tinted("face", "flesh", Color(0.55, 0.38, 0.3) if heavy else Color(0.85, 0.66, 0.55), 0.0))
+	part("Head", _sph(0.14, 0.22), Vector3(0, 0.12, 0.07), AbyssKit.mat("glass"), Vector3.ZERO, Vector3(1.05, 0.75, 0.95))
+	box("Head", Vector3(0.26, 0.02, 0.05), Vector3(0, 0.205, 0.1), AbyssKit.mat("led_cyan"))
 	box("Head", Vector3(0.05, 0.05, 0.06), Vector3(0.15, 0.17, 0.05), steel)
 	box("Head", Vector3(0.035, 0.035, 0.01), Vector3(0.15, 0.17, 0.085), AbyssKit.mat("led_cyan"))
 	box("Head", Vector3(0.04, 0.06, 0.2), Vector3(0, 0.29, -0.02), steel)
@@ -238,16 +247,19 @@ func _soldier() -> void:
 # ---------- Néréide : amphibie élancée, voûtée, griffes, nageoires ----------
 
 func _nereide() -> void:
-	var skin := AbyssKit.tinted("ner_skin", "flesh", Color(0.32, 0.72, 0.64), 0.15, Color.BLACK, 0.5)
-	var belly := AbyssKit.tinted("ner_belly", "flesh", Color(0.62, 0.86, 0.74), 0.05)
-	var fin := AbyssKit.tinted("ner_fin", "flesh", Color(0.3, 0.85, 0.6, 0.85), 0.0, Color("1d6e55"), 0.8)
-	var eye := AbyssKit.mat("led_green")
+	## Planche ALIEN-001 Nereid Scout : peau bleu nuit luisante, crête, lignes bioluminescentes cyan.
+	var skin := AbyssKit.tinted("ner_skin", "flesh", Color(0.2, 0.3, 0.42), 0.35, Color.BLACK, 0.45)
+	var belly := AbyssKit.tinted("ner_belly", "flesh", Color(0.28, 0.4, 0.52), 0.3)
+	var fin := AbyssKit.tinted("ner_fin", "flesh", Color(0.18, 0.32, 0.45), 0.2, Color("0a3a4a"), 0.8)
+	var eye := AbyssKit.mat("led_cyan")
 	_humanoid(0.92, 0.42, 0.46, 0.36, 0.4, skin, 0.06)
 	(joints["Torso"] as Node3D).rotation_degrees.x = 24
 	base["Torso"] = (joints["Torso"] as Node3D).rotation
 	part("Hips", _caps(0.13, 0.3), Vector3.ZERO, skin, Vector3(0, 0, 90))
 	part("Torso", _caps(0.14, 0.62), Vector3(0, 0.3, 0), skin, Vector3.ZERO, Vector3(1.15, 1, 0.9))
 	part("Torso", _caps(0.12, 0.42), Vector3(0, 0.26, 0.07), belly)
+	for i in 5: # ligne bioluminescente de la colonne
+		part("Torso", AbyssKit.bevel_box(Vector3(0.03, 0.06, 0.02), 0.008), Vector3(0, 0.12 + i * 0.1, -0.135), eye)
 	for i in 4: # côtes
 		part("Torso", AbyssKit.bevel_box(Vector3(0.3, 0.025, 0.06), 0.01), Vector3(0, 0.18 + i * 0.08, 0.15), belly)
 	var dorsal := PrismMesh.new()
@@ -338,13 +350,14 @@ func _carapace() -> void:
 # ---------- Spectre : méduse psionique bioluminescente ----------
 
 func _spectre() -> void:
-	var bell := AbyssKit.tinted("spec_bell", "flesh", Color(0.62, 0.42, 1.0, 0.82), 0.0, Color("6a2adf"), 0.9)
+	## Planches ALIEN-002 / CHAR-003 : cloche gris fumé translucide, cœur violet, longs tentacules sombres.
+	var bell := AbyssKit.tinted("spec_bell", "flesh", Color(0.55, 0.55, 0.62, 0.55), 0.3, Color("1a1030"), 0.9)
 	(bell as StandardMaterial3D).transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var tent := AbyssKit.tinted("spec_tent", "flesh", Color(0.8, 0.6, 1.0, 0.85), 0.0, Color("8a4aff"), 0.6)
+	var tent := AbyssKit.tinted("spec_tent", "flesh", Color(0.38, 0.38, 0.45, 0.8), 0.2, Color("20123a"), 0.6)
 	(tent as StandardMaterial3D).transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	joint("Bell", "", Vector3(0, 1.35, 0))
-	part("Bell", _sph(0.4, 0.5, true), Vector3.ZERO, bell)
-	part("Bell", _sph(0.15, 0.22), Vector3(0, 0.08, 0), AbyssKit.mat("led_violet"))
+	part("Bell", _sph(0.4, 0.62, true), Vector3.ZERO, bell, Vector3.ZERO, Vector3(1, 1.25, 1))
+	part("Bell", _sph(0.17, 0.3), Vector3(0, 0.14, 0), AbyssKit.tinted("spec_core", "flesh", Color(0.35, 0.12, 0.6), 0.0, Color("5a1ab8")))
 	var rim := TorusMesh.new()
 	rim.inner_radius = 0.34; rim.outer_radius = 0.41; rim.rings = 20; rim.ring_segments = 6
 	part("Bell", rim, Vector3(0, 0.0, 0), tent)

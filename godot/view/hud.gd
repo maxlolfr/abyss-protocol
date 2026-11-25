@@ -123,8 +123,15 @@ func _ready() -> void:
 	arow.add_theme_constant_override("separation", 4)
 	bottom.add_child(arow)
 	for m in ["snap", "aimed", "throw", "breach", "heal", "reload", "kneel", "watch", "interact", "evac", "end"]:
-		var b := _button(arow, m, func(): action.emit(m), 12)
-		b.custom_minimum_size = Vector2(76, 46)
+		var b := _button(arow, m, func(): action.emit(m), 11)
+		b.custom_minimum_size = Vector2(72, 62)
+		var ip := "res://assets/ui/icons/%s.png" % m # icônes UI-112 (planche de Max)
+		if ResourceLoader.exists(ip):
+			b.icon = load(ip)
+			b.expand_icon = true
+			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+			b.add_theme_constant_override("icon_max_width", 30)
 		actions[m] = b
 	actions["end"].custom_minimum_size = Vector2(84, 46)
 	info = _label(root, "", 12, Color(0.75, 0.88, 0.94))
@@ -243,7 +250,7 @@ func refresh(b: AbyssBattle, sel: AbyssUnit, mode: String, busy: bool) -> void:
 	for m in spec:
 		var btn: Button = actions[m]
 		btn.visible = spec[m][2]
-		btn.text = "%s\n%d UT" % [spec[m][0], spec[m][1]] if m != "evac" else ("Évacuer\n%d reste%s" % [split["staying"].size(), "nt" if split["staying"].size() > 1 else ""] if split["staying"].size() else "Évacuer\ntous")
+		btn.text = "%s %d" % [spec[m][0], spec[m][1]] if m != "evac" else ("Évacuer (%d)" % split["staying"].size() if split["staying"].size() else "Évacuer")
 		btn.disabled = not ready or (sel != null and sel.tu < spec[m][1])
 		btn.add_theme_color_override("font_color", AMBER if mode == m or m in ["interact", "evac"] else TEXT)
 	actions["end"].text = "Fin du\ntour"

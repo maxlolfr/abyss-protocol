@@ -38,7 +38,7 @@ static func mat(key: String) -> Material:
 			m.roughness = 0.45
 			m.metallic = 0.0
 		"steel": _flat(m, Color("6d7c88"), 0.85, 0.3)
-		"armor": _flat(m, Color("5d6e7c"), 0.6, 0.38)
+		"armor": _flat(m, Color("3a4856"), 0.65, 0.36)
 		"armor_dark": _flat(m, Color("2c3946"), 0.55, 0.45)
 		"dark": _flat(m, Color("141c24"), 0.5, 0.6)
 		"rubber": _flat(m, Color("1a1d20"), 0.0, 0.85)

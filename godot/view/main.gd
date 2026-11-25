@@ -311,7 +311,7 @@ func _build_unit(u: AbyssUnit) -> void:
 	root.position = _cell_pos(u.cell)
 	add_child(root)
 	unit_nodes[u.id] = root
-	var body := UnitVisuals.build(u.kind, _mat)
+	var body := UnitVisuals.build(u.kind, _mat, u.id)
 	body.name = "Body"
 	root.add_child(body)
 	if u.human:
