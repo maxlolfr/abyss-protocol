@@ -166,5 +166,30 @@ func _init() -> void:
 	c5.advance(1440)
 	check(c5.outcome == "defeat", "menace à 100 : campagne perdue")
 
+	# nouvelles cartes de campagne : parties IA contre IA jouables jusqu'au bout
+	for kind in ["port", "nid", "epave"]:
+		var cc := AbyssCampaign.new("carte-" + kind)
+		var crew := ["nereide", "carapace", "nereide"] if kind != "nid" else ["spectre", "carapace", "nereide", "nereide"]
+		if kind == "nid": # fin de campagne : escouade aguerrie et équipée
+			for sd in cc.soldiers:
+				sd["armor"] = "scaphandre"
+				sd["acc"] = int(sd["acc"]) + 6
+				if sd["weapon"] == "rifle":
+					sd["weapon"] = "cavitation"
+		var ss := cc._add_site(kind, StratData.PORTS["dakar"]["pos"], 600, crew)
+		var wins := 0
+		var ends := 0
+		for i in 8:
+			var mc: Dictionary = cc.mission_config(ss["id"])
+			var bb := AbyssBattle.new(mc["seed"] + str(i), mc["map"], mc["squad"], mc["aliens"], mc["mods"])
+			var ee: Array = []
+			while bb.outcome == "ongoing" and bb.turn < 30:
+				AbyssAI.run(bb, true, ee)
+				if bb.outcome == "ongoing":
+					bb.apply({"type": "end_turn"})
+			ends += 1 if bb.outcome != "ongoing" else 0
+			wins += 1 if bb.outcome == "victory" else 0
+		print("%s : %d/8 victoires, %d/8 terminées" % [kind, wins, ends])
+		check(ends >= 6, "carte %s : les parties se terminent" % kind)
 	print("Tests campagne : %d réussis, %d échoués" % [passed, failed])
 	quit(1 if failed else 0)

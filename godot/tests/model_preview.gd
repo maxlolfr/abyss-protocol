@@ -15,7 +15,7 @@ func _initialize() -> void:
 	var sun := DirectionalLight3D.new(); sun.rotation_degrees = Vector3(-40, 30, 0); w.add_child(sun)
 	var files := ["walker.glb", "okafor.glb", "lind.glb", "nereide.glb", "brute.glb"]
 	for i in files.size():
-		var n: Node3D = (load("res://assets/units/models/" + files[i]) as PackedScene).instantiate()
+		var n: Node3D = (load("res://assets/models/units/" + files[i]) as PackedScene).instantiate()
 		var aabb := _aabb(n)
 		print(files[i], " aabb ", aabb)
 		var s: float = 1.8 / maxf(aabb.size.y, 0.001)

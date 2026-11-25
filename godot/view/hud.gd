@@ -11,6 +11,12 @@ signal rotate_cam(dir: int)
 signal setting(key: String, value: Variant)
 signal restart
 
+var campaign := false # combat lancé depuis la campagne : « retour à Neptune » au lieu de « nouvelle mission »
+var mission_name := "OPÉRATION NÉMÉSIS"
+var squad_ids: Array = ["s1", "s2", "s3", "s4"] # soldats engagés (campagne : n'importe quels soldats de Neptune)
+var visuals := {} # id -> portrait / apparence
+var roles := {}
+
 const CYAN := Color("39d9ef")
 const AMBER := Color("ffb547")
 const RED := Color("e5484d")
@@ -67,13 +73,14 @@ func _ready() -> void:
 	sq.position = Vector2(margin, 58)
 	sq.add_theme_constant_override("separation", 4)
 	root.add_child(sq)
-	for id in ["s1", "s2", "s3", "s4"]:
+	for id in squad_ids:
 		var b := _button(sq, id, func(): select_unit.emit(id), 13)
 		b.custom_minimum_size = Vector2(166, 74)
 		b.add_theme_font_size_override("font_size", 12)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		# portrait tiré des planches de Max + barres PV (vert) et UT (cyan)
-		b.icon = load("res://assets/ui/portraits/%s.jpg" % id)
+		var pp := "res://assets/ui/portraits/%s.jpg" % visuals.get(id, id)
+		b.icon = load(pp if ResourceLoader.exists(pp) else "res://assets/ui/portraits/s3.jpg")
 		b.expand_icon = true
 		b.add_theme_constant_override("icon_max_width", 44)
 		b.add_theme_constant_override("h_separation", 8)
@@ -161,7 +168,7 @@ func _ready() -> void:
 		_settings["speed"] = {1.0: 2.0, 2.0: 4.0, 4.0: 1.0}[_settings["speed"]]
 		sp.text = "Vitesse ennemie : x%d" % int(_settings["speed"])
 		setting.emit("speed", _settings["speed"]))
-	_button(mv, "Nouvelle mission", func(): restart.emit(), 14)
+	_button(mv, "Abandonner (retour à Neptune)" if campaign else "Nouvelle mission", func(): restart.emit(), 14)
 	# bas : aperçu sur une ligne + actions contextuelles
 	var bottom := VBoxContainer.new()
 	bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
@@ -311,15 +318,22 @@ func set_preview(text: String, can_confirm: bool) -> void:
 
 ## Met à jour l'escouade, les objectifs et les actions utiles pour le soldat actif.
 func refresh(b: AbyssBattle, sel: AbyssUnit, mode: String, busy: bool) -> void:
-	objectives.text = "Tour %d%s\n%s Artefact -> sas    %s Journal (passerelle)" % [
-		b.turn, "  ·  hostiles en alerte" if b.alert else "",
-		"[x]" if b.artifact.x < 0 and b.living(true).any(func(u): return u.carrying) else "[ ]", "[x]" if b.logs_done else "[ ]"]
+	var carried := "[x]" if b.artifact.x < 0 and b.living(true).any(func(u): return u.carrying) else "[ ]"
+	var goal := ""
+	match b.map_id:
+		"port":
+			goal = "[ ] Éliminer les assaillants (%d restants)" % b.living(false).size()
+		"nid":
+			goal = "%s Noyau du Nid -> sas" % carried
+		_:
+			goal = "%s Artefact -> sas    %s Journal (passerelle)" % [carried, "[x]" if b.logs_done else "[ ]"]
+	objectives.text = "Tour %d%s\n%s" % [b.turn, "  ·  hostiles en alerte" if b.alert else "", goal]
 	for id in squad:
 		var u := b.unit(id)
 		var btn: Button = squad[id]
 		var w: Dictionary = AbyssData.WEAPONS[u.weapon]
 		var state := "Évacué" if u.evacuated else ("Mort au combat" if not u.alive else "%d PV · %d UT" % [u.hp, u.tu])
-		btn.text = "%s\n%s · %d/%d\n%s\n" % [u.name.replace("Sgt. ", ""), ROLES.get(id, ""), u.ammo, w.get("mag", 0), state]
+		btn.text = "%s\n%s · %d/%d\n%s\n" % [u.name.replace("Sgt. ", ""), roles.get(id, ROLES.get(id, "")), u.ammo, w.get("mag", 0), state]
 		btn.modulate = Color(1, 1, 1) if u.alive and not u.evacuated else Color(0.55, 0.58, 0.62)
 		var bd: Dictionary = badges[id]
 		bd["interact"].visible = u.carrying
@@ -377,7 +391,7 @@ func show_end(b: AbyssBattle) -> void:
 	var head := HBoxContainer.new()
 	v.add_child(head)
 	_label(head, title, 30, tcol)
-	var sub := _label(head, "   DÉBRIEFING · OPÉRATION NÉMÉSIS · %d tours" % b.turn, 13, Color(0.7, 0.8, 0.86))
+	var sub := _label(head, "   DÉBRIEFING · %s · %d tours" % [mission_name, b.turn], 13, Color(0.7, 0.8, 0.86))
 	sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 14)
@@ -425,7 +439,7 @@ func show_end(b: AbyssBattle) -> void:
 		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		right.add_child(card)
 		_label(right, "Artefact alien inconnu (RES-001)", 12, Color(0.7, 0.8, 0.86))
-	var again := _button(v, "Nouvelle mission", func(): restart.emit(), 15)
+	var again := _button(v, "Retour à Neptune" if campaign else "Nouvelle mission", func(): restart.emit(), 15)
 	again.custom_minimum_size = Vector2(0, 44)
 	again.add_theme_stylebox_override("normal", tex_box("btn_orange"))
 	end_panel.visible = true

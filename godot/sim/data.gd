@@ -151,7 +151,6 @@ const REINFORCEMENTS := {
 	],
 	"nid": [
 		["nereide", [Vector2i(1, 5), Vector2i(2, 5), Vector2i(1, 6)], 0],
-		["carapace", [Vector2i(13, 5), Vector2i(14, 5), Vector2i(14, 6)], 1],
-		["spectre", [Vector2i(14, 2), Vector2i(13, 1)], 2],
+		["carapace", [Vector2i(13, 5), Vector2i(14, 5), Vector2i(14, 6)], 2],
 	],
 }

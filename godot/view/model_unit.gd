@@ -1,11 +1,10 @@
 class_name ModelUnit
 extends Node3D
-## Personnage en vrai modèle 3D (Tripo, versions allégées : tools/lighten_glb.py) dans `assets/units/models/`.
+## Personnage en vrai modèle 3D (Tripo, versions allégées : tools/lighten_glb.py), voir ModelRegistry.
 ## Les modèles livrés n'ont pas encore de squelette : les animations (mêmes noms que les autres corps :
 ## idle, walk, shoot, hit, kneel, death) bougent le modèle entier. Un modèle riggé avec ses propres
 ## animations pourra remplacer ce fichier sans toucher au reste.
 
-const DIR := "res://assets/units/models/%s.glb"
 ## modèle par soldat (id) ou par espèce : [fichier, hauteur en mètres]
 const MODELS := {
 	"s2": ["okafor", 1.88],
@@ -20,7 +19,7 @@ var _mats: Array[StandardMaterial3D] = []
 
 static func key(kind: String, id: String) -> String:
 	var k := id if kind == "soldier" else kind
-	return k if MODELS.has(k) and ResourceLoader.exists(DIR % MODELS[k][0]) else ""
+	return k if MODELS.has(k) and ModelRegistry.has("units", MODELS[k][0]) else ""
 
 static func build(k: String) -> ModelUnit:
 	var n := ModelUnit.new()
@@ -31,8 +30,7 @@ func _setup(file: String, h: float) -> void:
 	height = h
 	pivot.name = "Pivot"
 	add_child(pivot)
-	var m: Node3D = (load(DIR % file) as PackedScene).instantiate()
-	m.scale = Vector3.ONE * h # modèles Tripo : 1 unité de haut, pieds à y = 0, regard vers +Z
+	var m: Node3D = ModelRegistry.instance("units", file, h)
 	pivot.add_child(m)
 	for mi in m.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON

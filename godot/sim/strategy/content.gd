@@ -54,7 +54,7 @@ const PORTS := {
 const CRAFTS := {
 	"barracuda": {"name": "Barracuda", "role": "intercepteur", "speed": 420, "fuel": 22, "hull": 60, "sonar": 650,
 		"weapon": {"name": "Torpilles Mk-II", "damage": 16, "acc": 62}, "upkeep": 40},
-	"triton": {"name": "Triton", "role": "transport", "speed": 170, "fuel": 90, "hull": 90, "sonar": 350, "seats": 4, "upkeep": 50},
+	"triton": {"name": "Triton", "role": "transport", "speed": 220, "fuel": 240, "hull": 90, "sonar": 350, "seats": 4, "upkeep": 50},
 }
 
 ## Sous-marins aliens. hull, attaque par passe (damage, acc), vitesse km/h.
@@ -66,9 +66,9 @@ const ALIEN_SUBS := {
 
 ## Opérations aliens autonomes : coût (budget alien), engin, effet si elles aboutissent sans réponse.
 const ALIEN_OPS := {
-	"reconnaissance": {"name": "Reconnaissance", "sub": "eclaireur", "cost": 30, "hours": [40, 70], "trust": -3, "threat": 2},
-	"moisson": {"name": "Moisson côtière", "sub": "moissonneur", "cost": 55, "hours": [30, 50], "trust": -6, "threat": 3},
-	"raid": {"name": "Raid portuaire", "sub": "moissonneur", "cost": 70, "hours": [26, 40], "trust": -12, "threat": 5},
+	"reconnaissance": {"name": "Reconnaissance", "sub": "eclaireur", "cost": 30, "hours": [40, 70], "trust": -3, "threat": 1},
+	"moisson": {"name": "Moisson côtière", "sub": "moissonneur", "cost": 55, "hours": [30, 50], "trust": -6, "threat": 2},
+	"raid": {"name": "Raid portuaire", "sub": "moissonneur", "cost": 70, "hours": [26, 40], "trust": -12, "threat": 3},
 }
 
 ## Missions terrain. map = carte tactique ; aliens = composition de base (la menace en ajoute).
@@ -192,7 +192,7 @@ const LAST_NAMES := ["Abara", "Berg", "Castillo", "Dubois", "Eze", "Fujita", "Ga
 
 ## Menace : 0 → 100. À 100 la campagne est perdue ; la réduire en frappant les opérations aliens.
 const THREAT_START := 12
-const THREAT_DAILY := 0.55
-const ALIEN_BUDGET_DAILY := 14.0 # + menace/4 par jour
+const THREAT_DAILY := 0.22
+const ALIEN_BUDGET_DAILY := 9.0 # + menace/6 par jour
 const LOSE_REGIONS := 3 # conseils retirés avant la défaite
 const NEST := Vector2(11.4, 142.4)

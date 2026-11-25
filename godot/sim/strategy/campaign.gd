@@ -384,6 +384,13 @@ func _send(cmd: Dictionary, ev: Array) -> void:
 		c["target"] = {"site": s["id"]}
 	else:
 		c["target"] = {"pos": cmd["pos"]}
+	var tp = _target_pos(c)
+	if tp != null and not cmd.has("contact"):
+		var need := (AbyssGeo.dist_km(c["pos"], tp) + AbyssGeo.dist_km(tp, StratData.BASE_POS)) / float(c["speed"])
+		if need > float(c["fuel"]) * 0.95:
+			c["target"] = {}
+			ev.append({"t": "error", "text": "hors d'autonomie : aller-retour %d h, carburant %d h" % [int(need), int(c["fuel"])]})
+			return
 	c["state"] = "outbound"
 
 func _equip(cmd: Dictionary, ev: Array) -> void:
@@ -460,7 +467,7 @@ func _tick(dt: int, ev: Array) -> void:
 
 func _daily(ev: Array) -> void:
 	threat = minf(100.0, threat + StratData.THREAT_DAILY)
-	alien_budget += StratData.ALIEN_BUDGET_DAILY + threat / 4.0
+	alien_budget += StratData.ALIEN_BUDGET_DAILY + threat / 6.0
 	_spawn_ops(ev)
 	if threat >= 100.0:
 		_lose("La menace abyssale a submergé les défenses humaines.", ev)
@@ -478,6 +485,8 @@ func _monthly(ev: Array) -> void:
 			continue
 		if int(r["activity"]) > 0:
 			lines.append("%s : %d activité(s) alien sans réponse." % [StratData.REGIONS[id]["name"], r["activity"]])
+		else:
+			r["trust"] = minf(100.0, float(r["trust"]) + 5.0) # un mois calme rassure
 		r["activity"] = 0
 		if r["trust"] <= 10.0:
 			r["withdrawn"] = true
@@ -529,7 +538,7 @@ func _research_effects(id: String, ev: Array) -> void:
 			if c["type"] == "barracuda":
 				c["speed"] = float(StratData.CRAFTS["barracuda"]["speed"]) * float(e["interceptor_speed"])
 	if e.get("reveal_nest", false) and site_of_kind("nid").is_empty():
-		var s := _add_site("nid", StratData.NEST, 0, ["spectre", "carapace", "nereide", "nereide", "carapace"])
+		var s := _add_site("nid", StratData.NEST, 0, ["spectre", "carapace", "nereide", "nereide"])
 		s["deep"] = true
 		ev.append({"t": "site", "id": s["id"], "text": "Le Nid est localisé : fosse des Mariannes.", "critical": true})
 
@@ -665,7 +674,10 @@ func _resolve_intercept(engage: bool, ev: Array) -> void:
 	elif res["win"]:
 		stats["intercepts"] += 1
 		contacts.erase(k)
-		threat = maxf(0.0, threat - 3)
+		for id in regions:
+			if not regions[id]["withdrawn"]:
+				regions[id]["trust"] = minf(100.0, float(regions[id]["trust"]) + 1.0)
+		threat = maxf(0.0, threat - 4)
 		score += 15
 		var deep := trench_at(k["pos"]) != ""
 		var s := _add_site("epave", k["pos"], StratData.MISSIONS["epave"]["hours"] * 60, _crew(k["sub"]))
@@ -741,7 +753,7 @@ func _op_done(k: Dictionary, ev: Array) -> void:
 	contacts.erase(k)
 	var t: Dictionary = StratData.ALIEN_OPS[k["op"]]
 	var reg := region_of(k["pos"])
-	regions[reg]["trust"] = maxf(0.0, float(regions[reg]["trust"]) + float(t["trust"]))
+	regions[reg]["trust"] = maxf(0.0, float(regions[reg]["trust"]) + float(t["trust"]) * (1.0 if k["detected"] else 0.5))
 	regions[reg]["activity"] = int(regions[reg]["activity"]) + 1
 	threat = minf(100.0, threat + float(t["threat"]))
 	if k["detected"]:
@@ -793,10 +805,12 @@ func _add_site(kind: String, pos: Vector2, life_minutes: int, aliens: Array) -> 
 
 func _site_expired(s: Dictionary, ev: Array) -> void:
 	sites.erase(s)
+	if pending.get("site", "") == s["id"]:
+		pending = {}
 	var m: Dictionary = StratData.MISSIONS[s["kind"]]
 	var reg: String = s["region"]
 	regions[reg]["trust"] = maxf(0.0, float(regions[reg]["trust"]) + float(m["lose_trust"]))
-	threat = minf(100.0, threat + 4)
+	threat = minf(100.0, threat + 3)
 	for c in crafts:
 		if c["target"].get("site", "") == s["id"]:
 			c["target"] = {}
@@ -808,11 +822,13 @@ func _site_expired(s: Dictionary, ev: Array) -> void:
 ## Ce que le combat tactique doit charger pour le site en attente d'assaut.
 func mission_config(site_id: String) -> Dictionary:
 	var s := site(site_id)
+	if s.is_empty():
+		return {}
 	var squad_defs := []
 	for sd in squad():
 		squad_defs.append({"id": sd["id"], "name": sd["name"], "visual": sd.get("visual", ""), "weapon": sd["weapon"], "acc": sd["acc"],
 			"react": sd["react"], "tu": sd["tu"], "hp": sd["hp"], "grenades": sd["grenades"], "medkit": sd["medkit"],
-			"armor": int(StratData.ITEMS[sd["armor"]].get("armor", 0)), "psi": sd.get("psi", false)})
+			"armor": int(StratData.ITEMS[sd["armor"]].get("armor", 0)), "psi": sd.get("psi", false), "role": sd.get("role", "")})
 	var aliens: Array = s["aliens"].duplicate()
 	if s["kind"] != "nemesis" and threat >= 45 and aliens.size() < 5:
 		aliens.append("nereide" if threat < 70 else "carapace")
@@ -833,7 +849,8 @@ func apply_result(site_id: String, res: Dictionary) -> Array:
 		return ev
 	var m: Dictionary = StratData.MISSIONS[s["kind"]]
 	var won: bool = res["outcome"] == "victory"
-	sites.erase(s)
+	if won or s["kind"] != "nid":
+		sites.erase(s) # le Nid reste en place après un assaut repoussé
 	pending = {}
 	for c in crafts:
 		if c["target"].get("site", "") == site_id:
@@ -846,10 +863,17 @@ func apply_result(site_id: String, res: Dictionary) -> Array:
 		stats["won"] += 1
 		score += int(m["score"])
 		regions[reg]["trust"] = minf(100.0, float(regions[reg]["trust"]) + float(m["win_trust"]))
-		threat = maxf(0.0, threat - (6.0 if s["kind"] != "nid" else 30.0))
+		threat = maxf(0.0, threat - (8.0 if s["kind"] != "nid" else 30.0))
+		for id in regions:
+			if id != reg and not regions[id]["withdrawn"]:
+				regions[id]["trust"] = minf(100.0, float(regions[id]["trust"]) + 2.0)
 		for k in m["loot"]:
 			items[k] = int(items.get(k, 0)) + int(m["loot"][k])
 			lines.append("+%d %s" % [m["loot"][k], StratData.ITEMS[k]["name"]])
+		# campagne récupérable : sans l'artefact de Némésis, une autre cargaison alien en contient un
+		if s["kind"] in ["epave", "port"] and int(items.get("artefact", 0)) == 0 and not has_research("artefact_nemesis") and not research.has("artefact_nemesis"):
+			items["artefact"] = 1
+			lines.append("+1 Artefact (émetteur identique à celui de Némésis)")
 		for kind in res.get("kills", {}):
 			if StratData.CORPSES.has(kind):
 				var key: String = StratData.CORPSES[kind]
@@ -858,7 +882,7 @@ func apply_result(site_id: String, res: Dictionary) -> Array:
 	else:
 		stats["lost"] += 1
 		regions[reg]["trust"] = maxf(0.0, float(regions[reg]["trust"]) + float(m["lose_trust"]))
-		threat = minf(100.0, threat + 5.0)
+		threat = minf(100.0, threat + 3.0)
 	if res.get("artifact", false) and not won:
 		items["artefact"] = int(items.get("artefact", 0)) + 1
 	for r in res["soldiers"]:

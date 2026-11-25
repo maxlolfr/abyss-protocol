@@ -85,6 +85,13 @@ func _ready() -> void:
 	pivot.add_child(audio.listener) # écouteur au centre de la vue (la caméra orthographique est à 30 m)
 	audio.listener.make_current()
 	hud = AbyssHud.new()
+	hud.campaign = not AbyssSession.mission.is_empty()
+	if hud.campaign:
+		hud.mission_name = String(AbyssSession.mission["name"]).to_upper()
+		hud.squad_ids = battle.units.filter(func(u): return u.human).map(func(u): return u.id)
+		for q in AbyssSession.mission["squad"]:
+			hud.visuals[q["id"]] = q.get("visual", q["id"])
+			hud.roles[q["id"]] = q.get("role", "")
 	add_child(hud)
 	hud.action.connect(_on_action)
 	hud.confirm.connect(_confirm)
@@ -94,7 +101,14 @@ func _ready() -> void:
 	hud.setting.connect(_on_setting)
 	hud.restart.connect(func():
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
-		get_tree().reload_current_scene())
+		if hud.campaign:
+			var res := battle.result()
+			if res["outcome"] == "ongoing":
+				res["outcome"] = "defeat" # abandon : l'escouade rembarque, la mission est perdue
+			AbyssSession.result = res
+			get_tree().change_scene_to_file(AbyssSession.STRATEGY_SCENE)
+		else:
+			get_tree().reload_current_scene())
 	for s in battle.living(true):
 		_select(s)
 		break
@@ -111,7 +125,9 @@ func _ready() -> void:
 	if resumed:
 		hud.flash("Partie reprise (tour %d)" % battle.turn, AbyssHud.CYAN)
 	var auto: bool = OS.has_feature("web") and JavaScriptBridge.eval("new URLSearchParams(location.search).has('autoplay')")
-	if show_intro and not auto:
+	if hud.campaign:
+		_mission_audio()
+	elif show_intro and not auto:
 		var sc := AbyssScreens.new()
 		add_child(sc)
 		audio.music("mus_01_abyss_protocol", 0.5)
@@ -128,7 +144,10 @@ func _ready() -> void:
 func _mission_audio() -> void:
 	if not _story.has("intro") and battle.turn == 1:
 		_story["intro"] = true
-		hud.flash("Station Némésis, secteur confinement. Silence radio depuis 72 heures.", AbyssHud.CYAN)
+		if hud.campaign and battle.map_id != "nemesis":
+			hud.flash(String(AbyssSession.mission.get("brief", "")), AbyssHud.CYAN)
+		else:
+			hud.flash("Station Némésis, secteur confinement. Silence radio depuis 72 heures.", AbyssHud.CYAN)
 	audio.ambience(true)
 	audio.music("mus_03_contact_hostile" if combat_music else "mus_02_silent_depths", 2.0)
 
@@ -152,11 +171,20 @@ func _query(key: String) -> String:
 
 ## Reprise automatique d'une partie en cours (sauvegarde locale versionnée), sinon nouvelle mission.
 func _load_or_new() -> AbyssBattle:
+	var m: Dictionary = AbyssSession.mission
+	if not m.is_empty(): # combat de campagne : reprise s'il s'agit du même site, sinon nouveau combat
+		if FileAccess.file_exists(SAVE_PATH):
+			var sd = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+			if sd is Dictionary and String(sd.get("site", "")) == String(m["site"]):
+				var sb := AbyssBattle.from_dict(sd)
+				if sb and sb.outcome == "ongoing":
+					return sb
+		return AbyssBattle.new(m["seed"], m["map"], m["squad"], m["aliens"], m["mods"])
 	var seed := _query("seed")
 	var map := _query("map") if _query("map") != "" else "nemesis" # ?map=lab : ancien laboratoire
 	if seed == "" and FileAccess.file_exists(SAVE_PATH):
 		var d = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
-		if d is Dictionary and String(d.get("map", "lab")) == map:
+		if d is Dictionary and String(d.get("map", "lab")) == map and not d.has("site"):
 			var b := AbyssBattle.from_dict(d)
 			if b and b.outcome == "ongoing":
 				return b
@@ -168,7 +196,10 @@ func _save() -> void:
 		return
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify(battle.to_dict()))
+		var d := battle.to_dict()
+		if not AbyssSession.mission.is_empty():
+			d["site"] = AbyssSession.mission["site"]
+		f.store_string(JSON.stringify(d))
 
 # ---------- matériaux et primitives ----------
 
@@ -439,7 +470,7 @@ func _build_unit(u: AbyssUnit) -> void:
 	root.position = _cell_pos(u.cell)
 	add_child(root)
 	unit_nodes[u.id] = root
-	var body := UnitVisuals.build(u.kind, _mat, u.id)
+	var body := UnitVisuals.build(u.kind, _mat, u.visual if u.visual != "" else u.id)
 	body.name = "Body"
 	root.add_child(body)
 	if u.human:
