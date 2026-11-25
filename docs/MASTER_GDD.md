@@ -1,0 +1,54 @@
+# ABYSS PROTOCOL — MASTER GAME DESIGN DOCUMENT
+Maxlol Games | Vision de production v0.1 | Document de référence pour Claude
+
+## 1. Vision et règles non négociables
+Jeu original de stratégie mondiale, gestion de bases et tactique au tour par tour, inspiré spirituellement de X-COM: UFO Defense et Terror from the Deep. Une civilisation extraterrestre abyssale menace progressivement la Terre. Le joueur dirige une organisation internationale, construit des bases, intercepte des menaces, récupère des technologies et commande des soldats persistants. Mobile paysage prioritaire, Web pour les tests, Android/iOS puis PC. Hors ligne, premium, sans publicité. Ne copier aucun asset, nom de personnage ou interface propriétaire. Profondeur systémique, ergonomie simple. Ne pas produire massivement de contenu avant validation du plaisir de jeu.
+
+## 2. Références et identité visuelle
+- Terror from the Deep : guerre mondiale, recherche, interception, mystère sous-marin.
+- XCOM 2 : lisibilité des couvertures, tension, personnalisation.
+- Xenonauts 2 : simulation stratégique et logistique.
+- Into the Breach : décisions lisibles et interface compacte.
+- Phoenix Point : ennemis évolutifs et spécialisations.
+Direction originale : science-fiction militaire, bleu pétrole, cyan sonar, métal sombre, ambre pour les alertes, bioluminescence alien. 2D isométrique ou 2.5D, silhouettes lisibles sur téléphone. Voir ART_DIRECTION.md pour les briefs visuels. Ces descriptions ne sont pas des images exportées.
+
+## 3. Architecture technique
+Recommandation initiale : Phaser 3.90 (version à vérifier au démarrage), TypeScript strict, Vite, Tiled, Capacitor, Vitest, Playwright, GitHub Actions. Godot/GDScript est une alternative si la verticalité 3D ou la destruction volumétrique devient centrale. Avant choix définitif, tester une carte dense sur téléphone. Aucun backend obligatoire, aucune API IA payante en jeu. Simulation indépendante du rendu; RNG seedée, commandes sérialisables, sauvegardes versionnées, données de contenu séparées, migrations. Modules : TacticalEngine, TurnManager, ActionPointSystem, Pathfinding, LineOfSight, FogOfWar, CoverSystem, CombatResolver, EnemyAI, Inventory, CampaignEngine, Geoscape, BaseManagement, ResearchSystem, Manufacturing, SaveManager, AudioManager. Auditer TACTIKA avant réutilisation; ne pas modifier son dépôt. Préférer une nouvelle branche ou un nouveau dépôt pour ABYSS.
+
+## 4. Boucle principale
+Surveiller le globe → détecter → intercepter → déployer → combat → récupérer prisonniers/artefacts → rechercher → fabriquer → équiper/recruter → renforcer les bases → nouvelles menaces. Les défaites, blessures, pertes de matériel et missions ignorées ont des conséquences persistantes. Pas de succession de niveaux indépendants. Une campagne doit rester récupérable après un revers raisonnable; éviter les spirales de défaite invisibles.
+
+## 5. Géoscape et objectifs terrestres
+Carte mondiale interactive : océans, littoraux, continents, zones d'influence. Temps en pause et plusieurs vitesses; pause automatique pour décisions critiques uniquement. Les aliens ont une économie abstraite, des objectifs et des opérations autonomes. Radar/sonar selon emplacement et profondeur, contacts incertains, sous-marins et drones d'interception, carburant et disponibilité. Missions : épaves, laboratoire sous-marin, port attaqué, navire disparu, sauvetage civil, sabotage d'une installation terrestre, infiltration gouvernementale, défense de base, nid alien. Financement et confiance régionale évoluent selon résultats et négligence; menaces signalées clairement. Interceptions initialement résolues par règles simples et lisibles; système enrichi plus tard.
+
+## 6. Bases et logistique
+Base initiale Neptune; grille modulaire et construction adjacente. Salles : commandement, sonar, hangar, laboratoire, atelier, réacteur, dortoir, infirmerie, stockage, confinement alien, défense. Chaque salle possède coût, durée, consommation, capacité et prérequis. Affectation de scientifiques et ingénieurs, files de recherche/fabrication, gestion du personnel et des transports. Extension mondiale par nouvelles bases spécialisées; coûts d'entretien. En phase avancée la disposition de la base devient la carte réelle de sa défense; anticiper cette contrainte dans le format des salles. Ne pas construire ce système complet dans le premier prototype.
+
+## 7. Combat tactique
+Escouade de quatre soldats au départ; grille isométrique, A*, lignes de vue, brouillard de guerre, couvert partiel/total, tir de réaction, munitions et rechargement. Système d'unités de temps (UT) plutôt que deux actions fixes. Exemple à équilibrer : 60 UT, déplacement 6 par case de référence, tir rapide 12, précis 24, rechargement 8, surveillance 18, posture/couvert 4. Montrer coût, trajet, probabilité de toucher et UT restantes avant validation. Aperçu de réaction adverse si connue. IA à règles : couverture, flanc, objectif, retrait, soutien. Tours rapides avec option accélération. Phases avancées : suppression, moral, blessures, couvert destructible, dangers environnementaux, oxygène, pression, différences d'armes selon environnement. Éviter les systèmes avancés avant validation du noyau. Missions à objectifs variés, pas uniquement éliminer tous les ennemis. Exemples : extraction d'un artefact, sauver un scientifique, tenir une zone, évacuer une escouade. Les objectifs doivent être visibles en permanence.
+
+## 8. Soldats persistants
+Recrutement, nom, portrait, statistiques, expérience, grades, inventaire, blessures, récupération, mort permanente. Classes envisagées : assaut, artilleur, sniper, médecin, ingénieur, psionique (tardif). Sergent Walker : exemple de soldat personnalisable, pas un héros obligatoire; vétérans émergent naturellement. Progression par spécialisations plutôt que simple inflation des dégâts. Réserve de recrues et formation pour survivre à une perte. Pas de microgestion d'équipement via modales successives. Phase 1 : quatre soldats, trois armes, une grenade, un kit médical.
+
+## 9. Aliens, histoire et escalade
+Les aliens ne doivent pas être des sacs de PV. Néréides : infanterie amphibie et flancs; Carapaces : protection et pression; Spectres : brouillage/psychisme; Léviathans : menaces rares de grande taille. Trois archétypes simples suffisent au prototype. Proposition narrative à valider : les anomalies sonar révèlent une présence ancienne; des installations humaines disparaissent; une faction alien tente d'altérer les écosystèmes et d'infiltrer la surface; les artefacts révèlent un conflit interne alien; la résistance humaine doit choisir entre destruction et neutralisation de la source abyssale. Campagne en actes, révélations via missions et recherche, pas de longs dialogues forcés. Les aliens adaptent leurs doctrines selon règles et progression, sans IA générative distante. Prévoir plusieurs issues et une montée graduelle de la menace.
+
+## 10. Recherche et évolution technologique
+Artefact → analyse → branches armes plasma, biologie alien, alliages → armes avancées, capacités psioniques, exosquelettes → accès aux grandes profondeurs. Autopsies débloquent des faiblesses, matériaux ouvrent des équipements, propulsion et résistance à la pression ouvrent de nouvelles zones. Choix et coûts d'opportunité. Fabrication avec matériaux, ingénieurs, durée, capacité d'atelier. Les découvertes doivent modifier les décisions, pas simplement ajouter des pourcentages. Phase 3 : arbre réduit mais réellement fonctionnel.
+
+## 11. UX mobile et audio
+Quatre onglets permanents : Monde, Bases, Escouade, Recherche. En combat : ordre d'initiative/état, objectif, UT/PV, actions, fin de tour, zoom et déplacement caméra. Sélection au toucher, aperçu avant action irréversible, annulation de sélection sans coût. Aucun popup pour XP, début de tour, butin ordinaire, changement d'arme ou information simple. Bandeaux non bloquants, panneau contextuel, un récapitulatif final. Modales réservées aux décisions critiques. Sauvegarde automatique après commande validée et reprise immédiate. Options vitesse, texte lisible, daltonisme, réduction des flashes, volumes indépendants. Audio minimal initial : tir, impact, déplacement, alerte sonar, ambiance et confirmation; développer musique/voix après validation.
+
+## 12. Roadmap et portes de validation
+Phase 0 : architecture, audit des briques TACTIKA, spike rendu et tactile, documentation, dépôt séparé.
+Phase 1 (estimation 1–2 semaines, non garantie) : une carte laboratoire, quatre soldats, trois aliens, trois armes, grenade, soin, objectif principal et secondaire. Combat autonome, couvert, UT, IA, sauvegarde. Validation humaine : envie de rejouer 20 minutes avec ce seul contenu, aucune modale inutile, aucun blocage, interface lisible sur téléphone. Ne pas passer à la suite sans accord.
+Phase 2 (2–3 semaines indicatives) : géoscape, base initiale, temps, détection, interception simple, missions reliées, résultats persistants et financement minimal. Validation : boucle complète jouable plusieurs fois.
+Phase 3 (2–4 semaines indicatives) : recherche, fabrication, recrutement, blessures, équipement, économie, progression alien, campagne courte. Validation : décisions stratégiques réellement différentes.
+Phase 4 (4–8 semaines ou plus) : contenu après validation; biomes terrestres/sous-marins, missions, aliens, événements, bases multiples, récit, boss. Augmenter progressivement et tester chaque ajout.
+Phase 5 (3–5 semaines ou plus) : équilibrage, accessibilité, performances, localisation, tests appareils, démo, publication. Jeu commercial ambitieux : plusieurs mois au minimum; estimations à réévaluer après prototype.
+
+## 13. Commercialisation
+Démo gratuite, premium mobile 9,99–14,99 EUR à tester, PC 14,99–19,99 EUR à tester, extensions optionnelles plus tard. Aucun pay-to-win. Hypothèses, pas de prévision. Site MaxlolGames, vidéo de gameplay réelle, démo, page Steam et stores selon faisabilité. Aucun chantier marketing ou paiement avant prototype convaincant.
+
+## 14. Mandat pour Claude et livrables
+Lire ce GDD et ART_DIRECTION.md en entier. Toute la vision est un horizon architectural, pas une liste de tâches à implémenter immédiatement. Commencer uniquement par phase 0 et phase 1. Produire architecture, backlog par phase, décisions techniques argumentées, prototype, URL de test, tests automatisés, limites connues et journal des changements. Tester au minimum plusieurs tailles mobiles paysage et le tactile; vérifier performances, reprise, cohérence des UT, LOS, couverts, IA et victoire/défaite. Ne pas déclarer un test passé sans l'avoir exécuté. Arrêter à la porte de validation et demander l'avis humain avant phase 2. Mettre à jour le GDD si une décision est validée; distinguer vision, implémenté, testé et reporté. Ne pas générer des dizaines d'assets pour masquer un gameplay insuffisant.

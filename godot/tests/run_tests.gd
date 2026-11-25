@@ -1,0 +1,96 @@
+extends SceneTree
+## Tests de la simulation (sans écran) : godot --headless --path . -s res://tests/run_tests.gd
+
+var passed := 0
+var failed := 0
+
+func check(cond: bool, label: String) -> void:
+	if cond:
+		passed += 1
+	else:
+		failed += 1
+		printerr("ÉCHEC : ", label)
+
+func _init() -> void:
+	var b := AbyssBattle.new("t")
+	var g := b.grid
+	check(b.living(true).size() == 4 and b.living(false).size() == 3, "4 soldats et 3 aliens")
+	check(g.z(Vector2i(10, 2)) == 1.0 and g.z(Vector2i(8, 4)) == 0.5, "deux niveaux + escalier")
+	var s1 := b.unit("s1")
+	check(g.step_cost(Vector2i(3, 3), Vector2i(4, 3), s1, {}) == 6.0, "pas orthogonal 6 UT")
+	check(g.step_cost(Vector2i(1, 3), Vector2i(2, 4), s1, {}) == 8.0, "pas diagonal 8 UT")
+	check(g.step_cost(Vector2i(7, 4), Vector2i(8, 4), s1, {}) == 6.0, "monter sur l'escalier")
+	check(g.step_cost(Vector2i(10, 5), Vector2i(10, 4), s1, {}) == INF, "pas de saut de 1 m depuis le sol")
+	check(g.step_cost(Vector2i(13, 7), Vector2i(13, 8), s1, {}) == 10.0, "eau +4 UT")
+	# ligne de vue et couverture
+	check(not g.line_clear(Vector2i(5, 1), 1.5, Vector2i(7, 1), 1.0), "la cloison bloque la vue")
+	check(g.line_clear(Vector2i(5, 3), 1.5, Vector2i(7, 3), 1.0), "la caisse ne bloque pas la vue")
+	check(g.cover_against(Vector2i(4, 4), Vector2i(4, 9)) == 0, "pas de couvert en terrain ouvert")
+	check(g.cover_against(Vector2i(7, 3), Vector2i(1, 3)) == 1, "caisse = couvert partiel")
+	check(g.cover_against(Vector2i(7, 3), Vector2i(1, 3), true) == 2, "à genoux derrière une caisse = couvert total")
+	check(g.cover_against(Vector2i(7, 1), Vector2i(1, 1)) == 2, "cloison = couvert total")
+	# zone atteignable = coût débité
+	var r := b.reach(s1)
+	var to := Vector2i(4, 3)
+	var cost: float = r["cost"].get(g.idx(to), -1.0)
+	var before := s1.tu
+	b.apply({"type": "move", "unit": "s1", "to": to})
+	check(cost > 0 and s1.tu == before - int(r["cost"][g.idx(s1.cell)]), "déplacement : UT débitées = coût de la zone atteignable")
+	# murs destructibles
+	var b2 := AbyssBattle.new("mur")
+	var ok := b2.grid.damage_wall(Vector2i(6, 1), 44)
+	check(ok and b2.grid.tile(Vector2i(6, 1)) == AbyssGrid.T.RUBBLE and b2.grid.standable(Vector2i(6, 1)), "le harpon (44) abat une cloison (40 PV)")
+	check(not b2.grid.damage_wall(Vector2i(0, 1), 999), "la coque est indestructible")
+	var ok2 := b2.unit("s2")
+	ok2.cell = Vector2i(4, 1)
+	var ev := b2.apply({"type": "breach", "unit": "s2", "at": Vector2i(6, 2)})
+	check(ev.any(func(e): return e["t"] == "destroy"), "commande de brèche au harpon")
+	var b3 := AbyssBattle.new("gren")
+	b3.unit("s1").cell = Vector2i(3, 5)
+	var ev3 := b3.apply({"type": "throw", "unit": "s1", "to": Vector2i(3, 6)})
+	check(ev3.filter(func(e): return e["t"] == "destroy").size() >= 3, "la grenade abat plusieurs cloisons")
+	# tir plongeant
+	var b4 := AbyssBattle.new("haut")
+	var sp: AbyssUnit = b4.living(false).filter(func(u): return u.kind == "spectre")[0]
+	var sol := b4.unit("s1")
+	sol.cell = Vector2i(10, 6)
+	var high := b4.shot_info(sp, sol, "snap")
+	check(high["error"] == "" and high["chance"] > 0, "le Spectre tire depuis la passerelle")
+	# réaction en surveillance
+	var b5 := AbyssBattle.new("watch")
+	var w := b5.unit("s3")
+	w.cell = Vector2i(5, 9)
+	b5.apply({"type": "watch", "unit": "s3"})
+	b5.alert = true
+	b5.last_known["s3"] = w.cell
+	var ev5 := b5.apply({"type": "end_turn"})
+	check(ev5.any(func(e): return e["t"] == "shot"), "le tour alien produit des tirs")
+	# déterminisme
+	var x := AbyssBattle.new("det")
+	var y := AbyssBattle.new("det")
+	for bb in [x, y]:
+		bb.apply({"type": "move", "unit": "s3", "to": Vector2i(2, 5)})
+		bb.apply({"type": "end_turn"})
+		bb.apply({"type": "end_turn"})
+	check(x.snapshot() == y.snapshot(), "même seed + mêmes commandes = même partie")
+	# IA contre IA : les parties se terminent
+	var t0 := Time.get_ticks_msec()
+	var wins := 0
+	var n := 16
+	var ends := 0
+	for i in n:
+		var g2 := AbyssBattle.new("sim%d" % i)
+		var e2: Array = []
+		while g2.outcome == "ongoing" and g2.turn < 30:
+			AbyssAI.run(g2, true, e2)
+			if g2.outcome == "ongoing":
+				g2.apply({"type": "end_turn"})
+		if g2.outcome != "ongoing":
+			ends += 1
+		if g2.outcome == "victory":
+			wins += 1
+	print("durée IA : %d ms" % (Time.get_ticks_msec() - t0))
+	print("IA contre IA : %d/%d victoires de l'escouade, %d/%d parties terminées" % [wins, n, ends, n])
+	check(ends >= n - 2, "les parties IA contre IA se terminent")
+	print("Tests : %d réussis, %d échoués" % [passed, failed])
+	quit(1 if failed else 0)

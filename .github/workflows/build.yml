@@ -1,0 +1,100 @@
+name: Tests, builds et publication
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+env:
+  GODOT_VERSION: 4.7.2
+jobs:
+  phaser:
+    name: Prototype Phaser 4.2.1 (TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: phaser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Types (TypeScript strict)
+        run: npx tsc --noEmit
+      - name: Tests de simulation (Vitest)
+        run: npx vitest run
+      - name: Build Vite
+        run: npx vite build
+      - name: Test de navigation (Playwright)
+        continue-on-error: true
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phaser-web
+          path: phaser/dist
+  godot:
+    name: Prototype Godot 4.7.2 (GDScript, 3D)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: godot
+    steps:
+      - uses: actions/checkout@v4
+      - name: Godot et modèles d'export Web (officiels)
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip && mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o tpl.tpz $base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $dest && unzip -q -j tpl.tpz 'templates/web_nothreads_release.zip' 'templates/web_nothreads_debug.zip' 'templates/version.txt' -d $dest
+          rm godot.zip tpl.tpz
+      - name: Import du projet
+        run: godot --headless --path . --import || true
+      - name: Tests de simulation (GDScript)
+        run: timeout 600 godot --headless --path . -s res://tests/run_tests.gd
+      - name: Export Web
+        run: |
+          mkdir -p build
+          godot --headless --path . --export-release "Web" build/index.html
+          ls -la build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: godot-web
+          path: godot/build
+  deploy:
+    name: Publication GitHub Pages
+    needs: [phaser, godot]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: phaser-web
+          path: out/phaser
+      - uses: actions/download-artifact@v4
+        with:
+          name: godot-web
+          path: out/godot
+      - run: cp site/index.html out/index.html
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+      - id: pages
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ABYSS PROTOCOL — prototypes</title>
+<style>
+  body{margin:0;min-height:100vh;background:radial-gradient(circle at 30% 20%,#0d3346,#02070b 70%);color:#dceef5;font:16px/1.5 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+  main{max-width:760px}
+  h1{letter-spacing:.2em;color:#5cf2ff;margin:0 0 4px;font-size:clamp(26px,6vw,44px)}
+  .sub{color:#ffb347;letter-spacing:.12em;margin:0 0 20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  a.card{display:block;text-decoration:none;color:inherit;border:1px solid #5cf2ff55;border-radius:14px;padding:16px;background:#04121acc}
+  a.card:active,a.card:hover{border-color:#5cf2ff}
+  .card b{color:#5cf2ff;font-size:19px}
+  small{color:#8fb0bd}
+</style>
+</head>
+<body>
+<main>
+  <h1>ABYSS PROTOCOL</h1>
+  <p class="sub">MAXLOL GAMES · PROTOTYPES DE LA PHASE 1</p>
+  <p>Deux prototypes jouables pour choisir le moteur. Tenez le téléphone en paysage. Le compteur d'images par seconde est affiché dans chaque version.</p>
+  <div class="grid">
+    <a class="card" href="godot/"><b>Godot 4.7.2 · 3D</b><br>Vraie 3D isométrique, caméra rotative, deux niveaux, ombres dynamiques, cloisons destructibles.<br><small>≈ 10 Mo à charger · 4 soldats contre 3 aliens</small></a>
+    <a class="card" href="phaser/"><b>Phaser 4.2.1 · 2.5D</b><br>Isométrique 2.5D éclairée, brouillard de guerre, mission complète (artefact, journal, évacuation), sauvegarde.<br><small>≈ 0,4 Mo à charger · 4 soldats contre 6 aliens</small></a>
+  </div>
+  <p><small>Comparaison et décisions : <a style="color:#5cf2ff" href="https://github.com/maxlolfr/abyss-protocol/tree/main/docs">docs/</a></small></p>
+</main>
+</body>
+</html>
