@@ -4,6 +4,20 @@ extends Node3D
 ## caméra cinématique facultative. Lit AbyssBattle et rejoue ses événements ; n'écrit jamais dans l'état.
 
 const SAVE_PATH := "user://abyss_save.json"
+## Habillage propre à chaque carte : lumières [position, couleur, portée, énergie, ombres] et contamination.
+const PROPS := {
+	"lab": {"lights": [[Vector3(2.5, 2.2, 2.5), Color("ffb547"), 5.0, 1.8, false], [Vector3(5, 2.6, 8.5), Color("8fe8ff"), 7.0, 1.3, true],
+			[Vector3(11.5, 2.8, 3), Color("39d9ef"), 6.5, 1.2, false], [Vector3(13.5, 2.0, 8), Color("2ae8ff"), 4.0, 1.4, false],
+			[Vector3(14, 2.2, 12), Color("e5484d"), 4.5, 1.6, false], [Vector3(3, 1.4, 11.5), Color("9863f5"), 4.5, 1.9, false],
+			[Vector3(9.5, 2.6, 11), Color("ffcf8a"), 5.0, 0.9, false]],
+		"goo": [Vector2i(2, 11), Vector2i(3, 12), Vector2i(4, 11), Vector2i(1, 11), Vector2i(5, 12), Vector2i(2, 9)]},
+	# ENV-007 : cuve centrale cyan, mezzanines froides, sas ambre, alarme rouge, contamination violette à l'ouest
+	"nemesis": {"lights": [[Vector3(7.5, 2.4, 11.5), Color("ffb547"), 5.5, 1.8, false], [Vector3(7.5, 3.2, 3.5), Color("8fe8ff"), 7.5, 1.5, true],
+			[Vector3(2.5, 3.0, 2.5), Color("39d9ef"), 5.5, 1.1, false], [Vector3(13.5, 3.0, 2.5), Color("39d9ef"), 5.5, 1.1, false],
+			[Vector3(13.5, 2.0, 8), Color("e5484d"), 4.5, 1.6, false], [Vector3(3.5, 1.4, 6.5), Color("9863f5"), 5.0, 1.9, false],
+			[Vector3(7.5, 2.6, 7.5), Color("ffcf8a"), 5.0, 0.8, false]],
+		"goo": [Vector2i(6, 4), Vector2i(8, 2), Vector2i(4, 6), Vector2i(3, 7), Vector2i(9, 5), Vector2i(6, 2), Vector2i(1, 6)]},
+}
 
 var battle: AbyssBattle
 var hud: AbyssHud
@@ -71,13 +85,14 @@ func _query(key: String) -> String:
 ## Reprise automatique d'une partie en cours (sauvegarde locale versionnée), sinon nouvelle mission.
 func _load_or_new() -> AbyssBattle:
 	var seed := _query("seed")
+	var map := _query("map") if _query("map") != "" else "nemesis" # ?map=lab : ancien laboratoire
 	if seed == "" and FileAccess.file_exists(SAVE_PATH):
 		var d = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
-		if d is Dictionary:
+		if d is Dictionary and String(d.get("map", "lab")) == map:
 			var b := AbyssBattle.from_dict(d)
 			if b and b.outcome == "ongoing":
 				return b
-	return AbyssBattle.new(seed if seed != "" else "thetis-%d" % (int(Time.get_unix_time_from_system()) % 100000))
+	return AbyssBattle.new(seed if seed != "" else "thetis-%d" % (int(Time.get_unix_time_from_system()) % 100000), map)
 
 func _save() -> void:
 	if battle.outcome != "ongoing":
@@ -245,6 +260,8 @@ func _build_map() -> void:
 					K.spawn("terminal", K.console.bind(true), n, Vector3.ZERO, PI)
 					var o := OmniLight3D.new(); o.light_color = Color("52c99a"); o.omni_range = 2.5; o.light_energy = 1.2; o.position = Vector3(0, 1.1, 0.3)
 					n.add_child(o)
+				elif (x * 3 + y) % 5 == 0:
+					K.spawn("barricade", K.barricade, n, Vector3.ZERO, PI / 2 * ((x + y) % 4))
 				elif (x + y) % 2:
 					K.spawn("crate", K.crate, n, Vector3.ZERO, PI / 2 * ((x + 2 * y) % 4))
 				else:
@@ -264,10 +281,7 @@ func _build_map() -> void:
 
 func _build_props() -> void:
 	# éclairages façon ENV-007 : ambre au sas, néons cyan du labo, alarme rouge, contamination violette
-	for l in [[Vector3(2.5, 2.2, 2.5), Color("ffb547"), 5.0, 1.8, false], [Vector3(5, 2.6, 8.5), Color("8fe8ff"), 7.0, 1.3, true],
-			[Vector3(11.5, 2.8, 3), Color("39d9ef"), 6.5, 1.2, false], [Vector3(13.5, 2.0, 8), Color("2ae8ff"), 4.0, 1.4, false],
-			[Vector3(14, 2.2, 12), Color("e5484d"), 4.5, 1.6, false], [Vector3(3, 1.4, 11.5), Color("9863f5"), 4.5, 1.9, false],
-			[Vector3(9.5, 2.6, 11), Color("ffcf8a"), 5.0, 0.9, false]]:
+	for l in PROPS[battle.map_id]["lights"]:
 		var o := OmniLight3D.new()
 		o.position = l[0]; o.light_color = l[1]; o.omni_range = l[2]; o.light_energy = l[3]; o.shadow_enabled = l[4]
 		o.omni_attenuation = 1.4
@@ -277,7 +291,7 @@ func _build_props() -> void:
 			tw.tween_property(o, "light_energy", 0.5, 1.1).set_trans(Tween.TRANS_SINE)
 			tw.tween_property(o, "light_energy", l[3], 1.1).set_trans(Tween.TRANS_SINE)
 	# contamination violette autour du nid (sud-ouest), KIT-009
-	for p in [Vector2i(2, 11), Vector2i(3, 12), Vector2i(4, 11), Vector2i(1, 11), Vector2i(5, 12), Vector2i(2, 9)]:
+	for p in PROPS[battle.map_id]["goo"]:
 		var gi: int = p.x * 31 + p.y
 		_track(p, AbyssKit.spawn("tendrils%d" % (gi % 3), AbyssKit.tendrils.bind(gi % 3), self, _cell_pos(p), gi * 0.7))
 	# berceau de confinement Némésis à l'emplacement de l'artefact
@@ -756,6 +770,19 @@ func _cine_out(size: float) -> void:
 	await get_tree().create_timer(0.25).timeout
 	create_tween().tween_property(cam, "size", size, 0.3).set_trans(Tween.TRANS_SINE)
 
+## Caméra : suit en douceur une unité qui se déplace hors du centre de l'écran.
+func _follow(at: Vector3) -> void:
+	var flat := Vector3(at.x, 0, at.z)
+	if flat.distance_to(pivot.position) > cam.size * 0.32:
+		create_tween().tween_property(pivot, "position", pivot.position.lerp(flat, 0.6), 0.45 / speed).set_trans(Tween.TRANS_SINE)
+
+## Secousse brève, proportionnelle à la violence du coup.
+func _shake(power: float) -> void:
+	var tw := create_tween()
+	for i in 4:
+		tw.tween_property(cam, "v_offset", power * (1.0 if i % 2 else -1.0) * (1.0 - i * 0.22), 0.035)
+	tw.tween_property(cam, "v_offset", 0.0, 0.05)
+
 ## Joue une animation du modèle articulé (fondu court) ; les animations ponctuelles reviennent au repos.
 func _anim(n: Node3D, name: String) -> bool:
 	var ap: AnimationPlayer = n.get_node_or_null("Body/Anim")
@@ -792,6 +819,7 @@ func _play(events: Array) -> void:
 				n.visible = true
 				var dur := 0.2 / speed
 				_walk_bob(n, dur)
+				_follow(to)
 				var tw := create_tween()
 				tw.tween_property(n, "position", to, dur)
 				await tw.finished
@@ -828,12 +856,30 @@ func _play(events: Array) -> void:
 					var kick := create_tween()
 					kick.tween_property(body, "position:z", -0.08, 0.05)
 					kick.tween_property(body, "position:z", 0.0, 0.12)
+				# départ : flash de bouche (VFX-001) ou onde psychique (VFX-008), puis projectile visible
+				var w: String = e["weapon"]
 				_flash_light(a, col, 4.0, 4.0, 0.2)
-				_sparks(a, col, 8, 2.0, 0.2)
-				var beam := _beam(a, b, col, self, 0.06 if e["weapon"] in ["harpoon", "psi"] else 0.035)
-				await _wait(0.08)
-				beam.queue_free()
-				_sparks(b, col if e["hit"] else Color("c9d6e0"), 14, 3.0, 0.4)
+				if w == "psi":
+					AbyssFx.ring(self, a, Color(col, 0.9), 1.0, 0.3 / speed, false)
+					await _wait(0.18)
+				else:
+					AbyssFx.flash(self, a, col.lightened(0.4), 0.8 if w in ["rifle", "pistol", "harpoon"] else 0.45)
+					if w in ["rifle", "pistol", "harpoon"]:
+						AbyssFx.smoke(self, a, 2, 0.25, 0.7, Color(0.7, 0.72, 0.75, 0.3))
+					var ps: Array = {"rifle": [45.0, 0.16, 0.0], "pistol": [40.0, 0.14, 0.0], "harpoon": [18.0, 0.22, 0.05],
+						"dart": [22.0, 0.22, 0.0], "acid": [11.0, 0.32, 0.8]}[w]
+					await AbyssFx.projectile(self, a, b, col, ps[0] * speed, ps[1], ps[2])
+				# impact selon la surface touchée
+				var victim := battle.units.filter(func(x): return x.cell == e["to"])
+				var surf := "metal"
+				if w == "acid":
+					surf = "acid"
+					AbyssFx.puddle(self, _cell_pos(e["to"]), Color(0.45, 0.95, 0.2, 0.75), 0.9)
+				elif w == "psi":
+					surf = "psi"
+				elif e["hit"] and not victim.is_empty():
+					surf = "human" if victim[0].human else "alien"
+				AbyssFx.impact(self, b, surf)
 				if not e["hit"]:
 					_float(_cell_pos(e["to"]), "Raté (%d %%)" % e["chance"], Color("c9d6e0"))
 				await _wait(0.22)
@@ -843,6 +889,8 @@ func _play(events: Array) -> void:
 				var u := battle.unit(e["unit"])
 				var n: Node3D = unit_nodes[u.id]
 				_float(_cell_pos(u.cell), "-%d%s" % [e["amount"], " blessé" if e["wounded"] else ""], Color("ff7b6b"))
+				if e["amount"] >= 20:
+					_shake(0.05 + e["amount"] * 0.002)
 				if e["drained"] > 0:
 					hud.flash("%s désorienté : -%d UT au prochain tour" % [u.name, e["drained"]], Color("9863f5"))
 				if not _anim(n, "hit"):
@@ -872,7 +920,7 @@ func _play(events: Array) -> void:
 			"explosion":
 				var at := _cell_pos(e["at"])
 				_flash_light(at + Vector3(0, 1, 0), Color("ff8a3d"), 9.0, 9.0, 0.8)
-				_sparks(at + Vector3(0, 0.4, 0), Color("ffb060"), 70, 7.0, 0.9)
+				AbyssFx.explosion(self, at)
 				var ring := TorusMesh.new(); ring.inner_radius = 0.2; ring.outer_radius = 0.35
 				var rm := _mesh(self, ring, at + Vector3(0, 0.1, 0), _mat("shock", Color("ffb547"), 0, 1, Color("ff7a20"), 0.6))
 				var tw := create_tween().set_parallel()
@@ -898,6 +946,8 @@ func _play(events: Array) -> void:
 				var t := battle.unit(e["target"])
 				_float(_cell_pos(t.cell), "+%d PV" % e["amount"], Color("52c99a"))
 				_flash_light(_cell_pos(t.cell) + Vector3(0, 1, 0), Color("52c99a"), 3.0, 2.0, 0.6)
+				AbyssFx.ring(self, _cell_pos(t.cell) + Vector3(0, 0.05, 0), Color(0.3, 1.0, 0.75, 0.9), 0.8, 0.6) # VFX-010
+				AbyssFx.burst(self, _cell_pos(t.cell) + Vector3(0, 0.2, 0), "spark", Color(0.4, 1.0, 0.8), 16, 1.6, 0.9, 0.3, true, Vector3(0, 1.5, 0), 1.0, 15.0, Vector3.UP, true)
 				await _wait(0.3)
 			"reload":
 				_float(_cell_pos(battle.unit(e["unit"]).cell), "Rechargé", Color("c9e6ff"))

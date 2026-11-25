@@ -17,12 +17,14 @@ var artifact := Vector2i(-1, -1) # au sol ; (-1,-1) si porté
 var terminal := Vector2i(-1, -1)
 var logs_done := false
 var evac: Array[Vector2i] = []
+var map_id := "lab"
 var explored := PackedByteArray() # brouillard de guerre côté joueur (1 = déjà vu)
 
-func _init(seed_value := "abyss") -> void:
+func _init(seed_value := "abyss", map := "lab") -> void:
 	seed_text = seed_value
+	map_id = map if AbyssData.MAPS.has(map) else "lab"
 	rng.seed = hash(seed_value)
-	var spawns := grid.parse(AbyssData.LAB)
+	var spawns := grid.parse(AbyssData.MAPS[map_id])
 	artifact = spawns["artifact"]
 	terminal = spawns["terminal"]
 	for p in spawns["evac"]:
@@ -488,14 +490,14 @@ func to_dict() -> Dictionary:
 	var walls := {}
 	for k in grid.wall_hp:
 		walls[str(k)] = grid.wall_hp[k]
-	return {"version": 1, "seed": seed_text, "rng": str(rng.state), "turn": turn, "side": side, "outcome": outcome, "alert": alert,
+	return {"version": 1, "map": map_id, "seed": seed_text, "rng": str(rng.state), "turn": turn, "side": side, "outcome": outcome, "alert": alert,
 		"last_known": lk, "artifact": [artifact.x, artifact.y], "logs_done": logs_done, "tiles": Array(grid.tiles), "walls": walls,
 		"explored": Array(explored), "units": us}
 
 static func from_dict(d: Dictionary) -> AbyssBattle:
 	if int(d.get("version", 0)) != 1:
 		return null
-	var b := AbyssBattle.new(String(d["seed"]))
+	var b := AbyssBattle.new(String(d["seed"]), String(d.get("map", "lab")))
 	b.rng.state = int(String(d["rng"]))
 	b.turn = int(d["turn"]); b.side = d["side"]; b.outcome = d["outcome"]; b.alert = d["alert"]; b.logs_done = d["logs_done"]
 	b.artifact = Vector2i(int(d["artifact"][0]), int(d["artifact"][1]))

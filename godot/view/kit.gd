@@ -33,8 +33,9 @@ static func mat(key: String) -> Material:
 			m.albedo_texture = load(TEX % ["screen", "albedo"])
 			m.emission_enabled = true
 			m.emission_texture = load(TEX % ["screen", "emission"])
-			m.emission = Color(0.55, 1.0, 0.7) if key == "screen_green" else Color.WHITE
-			m.emission_energy_multiplier = 1.1
+			m.emission = Color(0.3, 0.75, 0.45) if key == "screen_green" else Color(0.3, 0.6, 0.75)
+			m.emission_energy_multiplier = 1.0
+			m.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
 			m.roughness = 0.45
 			m.metallic = 0.0
 		"steel": _flat(m, Color("6d7c88"), 0.85, 0.3)
@@ -281,7 +282,20 @@ static func crate() -> Piece:
 	for sx in [-0.42, 0.42]:
 		p.box(Vector3(0.03, 0.05, 0.22), Vector3(sx, 0.42, 0), "dark", 0.01)
 	p.box(Vector3(0.18, 0.04, 0.04), Vector3(0, 0.45, 0.34), "steel", 0.01)
+	p.box(Vector3(0.3, 0.02, 0.01), Vector3(0, 0.2, 0.335), "led_cyan", 0.0)
 	p.box(Vector3(0.5, 0.3, 0.44), Vector3(0.08, 0.79, -0.04), "crate", 0.03, Vector3(0, 12, 0)) # petite caisse empilée
+	return p
+
+## Barricade tactique (PROP-009) : dalle d'acier inclinée sur étais, bandes de danger. Couvert partiel.
+static func barricade() -> Piece:
+	var p := Piece.new()
+	p.box(Vector3(0.92, 0.7, 0.1), Vector3(0, 0.38, 0.05), "plate", 0.025, Vector3(-12, 0, 0))
+	p.box(Vector3(0.92, 0.12, 0.11), Vector3(0, 0.58, 0.0), "hazard", 0.01, Vector3(-12, 0, 0))
+	p.box(Vector3(0.94, 0.06, 0.14), Vector3(0, 0.74, -0.03), "steel", 0.015, Vector3(-12, 0, 0))
+	for sx in [-0.36, 0.36]:
+		p.box(Vector3(0.08, 0.06, 0.5), Vector3(sx, 0.03, -0.12), "dark", 0.01)
+		p.box(Vector3(0.06, 0.55, 0.06), Vector3(sx, 0.3, -0.2), "steel", 0.01, Vector3(32, 0, 0))
+	p.box(Vector3(0.05, 0.03, 0.01), Vector3(0.3, 0.45, 0.125), "led_amber", 0.0, Vector3(-12, 0, 0))
 	return p
 
 ## Console de laboratoire (KIT-006 / KIT-008) : couvert partiel avec écran incliné.

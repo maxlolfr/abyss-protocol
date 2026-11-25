@@ -159,11 +159,11 @@ def hazard():
 
 
 def crate():
-    """Caisses militaires : vert olive mat, nervures horizontales, pochoirs blancs."""
+    """Caisses militaires (PROP-007) : composite gris acier, nervures horizontales, pochoirs clairs."""
     rib = (np.abs(((yy * 6) % 1) - 0.5) < 0.08).astype(float)
     rib = blur(rib, 0.8)
     n = noise(20, 4)
-    col = hexcol("4a5236") * (0.85 + 0.25 * n[..., None])
+    col = hexcol("3a434c") * (0.85 + 0.25 * n[..., None])
     sten = ((xx > 0.18) & (xx < 0.82) & (yy > 0.40) & (yy < 0.52)) & (((xx * 40) % 1) < 0.65) & (((yy * 30) % 1) > 0.2)
     col = col * (1 - sten[..., None] * 0.7) + hexcol("cfd2c8") * sten[..., None] * 0.7
     col, d = grime(col, hexcol("23211a"), 0.35)
@@ -208,7 +208,30 @@ def fabric():
     save("fabric", col, weave * 0.3 - seam * 0.4, 0.7 + 0.15 * d, strength=4)
 
 
+def save_rgba(name, rgb, alpha):
+    os.makedirs(OUT, exist_ok=True)
+    a = np.dstack([np.clip(rgb, 0, 1), np.clip(alpha, 0, 1)[..., None]])
+    Image.fromarray((a * 255).astype(np.uint8), "RGBA").resize((256, 256), Image.LANCZOS).save(f"{OUT}/fx_{name}.png", optimize=True)
+
+
+def fx():
+    """Sprites d'effets (planches VFX-001 à 015) : flash étoilé, fumée douce, étincelle, onde, éclaboussure."""
+    cx, cy = xx - 0.5, yy - 0.5
+    r = np.sqrt(cx ** 2 + cy ** 2) * 2
+    ang = np.arctan2(cy, cx)
+    star = np.clip(1 - r, 0, 1) ** 2 * (0.55 + 0.45 * np.abs(np.cos(ang * 3)) ** 6) + np.clip(1 - r * 2.2, 0, 1) ** 1.5
+    save_rgba("flash", np.ones((N, N, 3)), star)
+    puff = np.clip(1 - r, 0, 1) ** 1.6 * (0.55 + 0.45 * noise(6, 4)) * 1.4
+    save_rgba("smoke", np.ones((N, N, 3)), puff)
+    streak = np.clip(1 - np.abs(cy) * 18, 0, 1) * np.clip(1 - np.abs(cx) * 2.1, 0, 1) ** 0.7
+    save_rgba("spark", np.ones((N, N, 3)), streak)
+    ring = np.clip(1 - np.abs(r - 0.82) * 9, 0, 1) * (0.6 + 0.4 * noise(10, 3))
+    save_rgba("ring", np.ones((N, N, 3)), ring)
+    blob = np.clip((0.75 + 0.35 * (noise(5, 3) - 0.5) * 2) - r, 0, 1) * 3
+    save_rgba("splat", np.ones((N, N, 3)), blob)
+
+
 if __name__ == "__main__":
-    for f in (metal_plate, hull, floor, grate, hazard, crate, screen, flesh, fabric):
+    for f in (metal_plate, hull, floor, grate, hazard, crate, screen, flesh, fabric, fx):
         f()
         print("ok", f.__name__)

@@ -113,6 +113,28 @@ func _init() -> void:
 		bb.apply({"type": "end_turn"})
 		bb.apply({"type": "end_turn"})
 	check(copy.snapshot() == sv.snapshot(), "sauvegarde puis reprise = même suite de partie")
+	# carte Némésis : structure, accès aux objectifs, sauvegarde
+	var nm := AbyssBattle.new("nem", "nemesis")
+	check(nm.map_id == "nemesis" and nm.living(true).size() == 4 and nm.living(false).size() == 3, "Némésis : 4 soldats, 3 aliens")
+	var walker := nm.unit("s1")
+	var rr := nm.grid.reach(walker, 9999, {})
+	check(rr["cost"].has(nm.grid.idx(nm.artifact + Vector2i(1, 0))), "Némésis : la cuve de l'artefact est accessible")
+	check(rr["cost"].has(nm.grid.idx(nm.terminal + Vector2i(1, 0))), "Némésis : le terminal de la mezzanine est accessible par l'escalier")
+	check(rr["cost"].has(nm.grid.idx(Vector2i(2, 2))), "Némésis : la mezzanine ouest est accessible")
+	check(AbyssBattle.from_dict(JSON.parse_string(JSON.stringify(nm.to_dict()))).map_id == "nemesis", "Némésis : la sauvegarde garde la carte")
+	var nwins := 0
+	var nends := 0
+	for i in 12:
+		var g3 := AbyssBattle.new("nsim%d" % i, "nemesis")
+		var e3: Array = []
+		while g3.outcome == "ongoing" and g3.turn < 30:
+			AbyssAI.run(g3, true, e3)
+			if g3.outcome == "ongoing":
+				g3.apply({"type": "end_turn"})
+		nends += int(g3.outcome != "ongoing")
+		nwins += int(g3.outcome == "victory")
+	print("Némésis IA contre IA : %d/12 victoires, %d/12 terminées" % [nwins, nends])
+	check(nends >= 10, "Némésis : les parties IA contre IA se terminent")
 	# IA contre IA : les parties se terminent
 	var t0 := Time.get_ticks_msec()
 	var wins := 0
