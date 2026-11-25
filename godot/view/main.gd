@@ -495,7 +495,8 @@ func _build_map() -> void:
 			elif t == AbyssGrid.T.WATER:
 				_bat(batch, "pool", Transform3D(Basis.IDENTITY, c))
 			else:
-				_bat(batch, "floor", Transform3D(Basis.IDENTITY, c))
+				var fk := "floor_b" if (x * 7 + y * 13) % 5 == 0 and not ModelKit.piece("floor_b", K.theme).is_empty() else "floor"
+				_bat(batch, fk, Transform3D(Basis(Vector3.UP, PI / 2 * ((x + y * 3) % 4)), c)) # dalles tournées : moins de répétition
 				if battle.in_evac(p): # pourtour du sas seulement
 					for d in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
 						if not battle.in_evac(p + d) and g.tile(p + d) != AbyssGrid.T.HULL:
@@ -531,7 +532,7 @@ func _build_map() -> void:
 				wall_nodes[g.idx(p)] = n
 				_track(p, n)
 	# sols, passerelles et bassins : un objet par type de dalle (MultiMesh)
-	var makers := {"floor": K.floor_tile.bind(false), "evac_edge": K.evac_edge, "deck_high": K.deck_high, "pool": K.pool,
+	var makers := {"floor": K.floor_tile.bind(false), "floor_b": K.floor_tile.bind(false), "evac_edge": K.evac_edge, "deck_high": K.deck_high, "pool": K.pool,
 		"hull": K.hull.bind(false), "hull_c": K.hull.bind(false), "hull_w": K.hull.bind(true),
 		"hull_x": K.hull.bind(false)}
 	for key in batch:

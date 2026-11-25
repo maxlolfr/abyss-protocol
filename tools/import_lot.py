@@ -83,6 +83,8 @@ ALIASES = {
     "industrial_staircase_3d": "escalier", "sci_fi_vault_door_3d": "porte_circulaire",
     "industrial_pipeline_3d": "tuyau_droit", "sci_fi_power_core_3d": "reacteur",
     "industrial_floor_grate_3d": "sol_grille", "sci_fi_canister_3d": "capsule_confinement",
+    "sci_fi_floor_tile_3d": "sol_dalle", "sci_fi_floor_panel_3d": "sol_dalle_02", "alien_organic_floor_3d": "sol_dalle_nid",
+    "purple_lava_stone_3d": "sol_dalle_02_nid",
 }
 # budget de triangles par catégorie (au-delà : avertissement ; le jeu reste jouable mais plus lourd sur téléphone)
 BUDGET = {"kit": 3000, "props": 6000, "units": 20000, "weapons": 3000, "crafts": 15000, "rooms": 20000}
@@ -117,10 +119,13 @@ def route(stem: str):
     return CATS[s], theme, s + num
 
 
-def triangles(path: str) -> int:
+def glb_json(path: str) -> dict:
     b = open(path, "rb").read()
-    jlen = struct.unpack("<I", b[12:16])[0]
-    j = json.loads(b[20:20 + jlen])
+    return json.loads(b[20:20 + struct.unpack("<I", b[12:16])[0]])
+
+
+def triangles(path: str) -> int:
+    j = glb_json(path)
     acc = j.get("accessors", [])
     total = 0
     for mesh in j.get("meshes", []):
@@ -167,6 +172,10 @@ def main(args):
                 if ext != ".glb":
                     continue
                 r = route(stem)
+                req = glb_json(src).get("extensionsRequired", [])
+                if any(e in req for e in ("EXT_meshopt_compression", "KHR_draco_mesh_compression")):
+                    other.append(f + " (compressé : " + ", ".join(req) + ")")  # Godot ne sait pas le lire
+                    continue
                 tris = triangles(src)
                 if r is None:
                     unknown.append((f, tris))
@@ -192,7 +201,7 @@ def main(args):
     if unknown:
         print("\n**À classer (nom inconnu)** : " + ", ".join("%s (%d tri.)" % u for u in unknown))
     if other:
-        print("\n**À réexporter en GLB** : " + ", ".join(other))
+        print("\n**À réexporter en GLB sans compression** : " + ", ".join(other))
 
 
 if __name__ == "__main__":

@@ -100,3 +100,6 @@ Import : `python3 -I tools/import_lot.py fichier.glb …` (accepte maintenant de
 Écartés : 1er « sci-fi terminal » (même maillage que pilier_humain, autre texture), 2e vault door (fichier identique), metal hatch window (plaque plate : trappe de sol ou hublot ? question à Max), industrial catwalk (passerelle de 0,33 × 1 m avec rambardes, 24 000 triangles : ne correspond pas au bloc `plateforme` 1 × 1 m).
 
 Coût de rendu (primitives, `campaign_battle_shot.gd`) avant → après : épave 222 k → 492 k, port 192 k ≈ 259 k, Nid 192 k → 712 k (murs du Nid à 3 200 triangles chacun). **À demander à Max** : exporter les modules répétés (murs, piliers, sols) depuis Tripo avec une limite de faces ≈ 1 500.
+
+### Sols reçus à 23 h (à réexporter)
+`sci-fi floor tile` (→ `sol_dalle` station), `sci-fi floor panel` (→ `sol_dalle_02`, variante semée une case sur cinq), `alien organic floor` (→ `sol_dalle` du Nid), `purple lava stone` (→ `sol_dalle_02` du Nid) : très bons budgets (330 à 470 triangles), mais **compressés** (gltfpack, `EXT_meshopt_compression`) : Godot ne les lit pas. Les réexporter depuis Tripo en GLB **sans compression** ; le jeu est déjà prêt (clés `floor` et `floor_b`, dalles tournées d'un quart de tour au hasard). L'outil d'import signale désormais ces fichiers au lieu de les ranger. `industrial floor grate` reçu deux fois (identique).

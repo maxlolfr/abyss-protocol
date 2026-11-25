@@ -23,6 +23,7 @@ const PROPS := "res://assets/models/props/%s.glb"
 ## modes : "width" (plus grande dimension horizontale), "height" (hauteur), "tile" (dalle : largeur, dessus à 0)
 const PIECES := {
 	"floor": ["sol_dalle", "tile", 1.0],
+	"floor_b": ["sol_dalle_02", "tile", 1.0], # variante semée sur une case sur cinq
 	"deck_high": ["plateforme", "width", 1.0],
 	"pool": ["sol_bassin", "tile", 1.0],
 	"hull": ["mur_coque", "width", 1.0],
@@ -77,7 +78,8 @@ static func _exists(rel: String) -> bool:
 static func _load(rel: String) -> Node3D:
 	var p := _path(rel)
 	if p.begins_with("res://"):
-		return (load(p) as PackedScene).instantiate()
+		var ps := load(p) as PackedScene # null si l'import a échoué (GLB compressé meshopt/Draco) : pièce provisoire gardée
+		return ps.instantiate() if ps else null
 	var doc := GLTFDocument.new() # fichiers hors projet (tests) : chargement GLB à la volée
 	var st := GLTFState.new()
 	if doc.append_from_file(p, st) != OK:
