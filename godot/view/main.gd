@@ -1125,6 +1125,7 @@ func _walk_bob(n: Node3D, dur: float) -> void:
 
 func _play(events: Array) -> void:
 	for e in events:
+		audio.event(e, battle, _where) # sons du lot 03 (voix, radio, bruitages ajoutés)
 		match e["t"]:
 			"move":
 				var u := battle.unit(e["unit"])
@@ -1139,8 +1140,7 @@ func _play(events: Array) -> void:
 				var dur := 0.2 / speed
 				_walk_bob(n, dur)
 				_follow(to)
-				if u.kind != "spectre":
-					audio.sfx("step_metal", to, -9.0 if u.human else -11.0, 1.0 if u.human else (0.75 if u.kind == "carapace" else 1.15), 0.12)
+				audio.step(u, to)
 				var tw := create_tween()
 				tw.tween_property(n, "position", to, dur)
 				await tw.finished
