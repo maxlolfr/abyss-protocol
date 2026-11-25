@@ -30,7 +30,8 @@ Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA
 - Fait : `sim/strategy/` (moteur de campagne), `view/strategy/` (globe, 4 onglets, décisions), cartes Port et Nid, passage campagne ↔ combat (`view/session.gd`). Journal complet : `docs/PHASE3.md`. Décisions : `docs/DECISIONS.md`.
 - Tests : `tests/run_tests.gd` (42), `tests/strategy_tests.gd` (50), campagne robot `tests/campaign_smoke.gd -- 2 [parfait]` (lent, hors CI), captures `tests/strategy_shot.gd -- /tmp/x/`, `tests/campaign_battle_shot.gd -- out.png port|nid|epave`.
 - Max fournit les musiques dans la conversation suivante (OGG/MP3 nommés) : les brancher sur le titre, le géoscape, la base, les alertes.
-- Suite probable : retours de Max sur téléphone, équilibrage stratégique, décors Port/Nid (Tripo), musiques, branchement des catégories GLB autres que `units`.
+- Phase 3 fusionnée par Max (#9, 25/11 21 h 41). Décors Port/Nid : branche `claude-b/decors-port-nid` (voir `docs/PHASE3.md`). Les sons sont intégrés par une autre conversation : ne pas toucher à `view/audio.gd` ni `assets/audio/` sans demander.
+- Suite probable : retours de Max sur téléphone, équilibrage stratégique (pas prioritaire selon Max), musiques, branchement des catégories GLB autres que `units`.
 
 ## Modèles 3D Tripo (25/11 20 h, PR #8 incluse dans la phase 3)
 - Max a un abonnement Tripo et modélise tout le jeu. Versions allégées (textures 1024 JPEG, `tools/lighten_glb.py`) dans `godot/assets/models/units/` : okafor (s2), lind (s3), nereide, brute. Registre : `view/model_registry.gd`, noms attendus : `docs/MODELES-3D.md`. Animations du modèle entier tant qu'il n'y a pas de squelette. Originaux jamais publiés.

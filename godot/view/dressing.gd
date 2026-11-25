@@ -13,6 +13,10 @@ const POOL_TEX := "res://assets/textures/fx_pool.png"
 const WALL_TECH := [["p002_s4", 2.3], ["p003_s4", 1.9], ["p004_s4", 1.35], ["p001_s4", 1.25], ["k006_2", 2.0], ["k007_3", 1.05], ["k008_3", 1.7], ["p005_s1", 1.05], ["k007_6", 1.1], ["k008_4", 1.45],
 	["k006_5", 1.0], ["k007_2", 1.0], ["k005_3", 1.25], ["p008_s1", 0.9], ["k008_1", 1.15], ["k006_1", 1.0]]
 const WALL_ALIEN := [["k009_1", 1.6], ["k009_5", 1.5], ["k009_2", 1.9], ["k009_6", 1.4]]
+## Port : matériel de quai (conteneur, citerne, armoire électrique, groupe électrogène, caisses, sacs de sable, fûts).
+const WALL_PORT := [["k005_3", 1.5], ["p004_s4", 1.3], ["p003_s4", 1.8], ["k007_5", 1.2], ["k005_1", 1.1], ["k005_4", 0.85], ["p008_s1", 0.9], ["k007_1", 1.1]]
+## Nid : excroissances, cocons, arches et orbes du nid.
+const WALL_NID := [["k009_1", 1.7], ["k009_5", 1.7], ["k009_2", 2.0], ["k009_6", 1.5], ["k009_4", 1.6], ["k009_3", 1.4]]
 
 var main: Node
 var decor: Array = [] # [Node3D, normale de la paroi]
@@ -51,7 +55,7 @@ func build(m: Node) -> void:
 			var n := Vector3(p.x - inner.x, 0, p.y - inner.y) # normale vers l'extérieur
 			var at := Vector3(inner.x + 0.5, g.z(inner), inner.y + 0.5) + n * 0.42
 			var alien := nem and x <= 3 and y >= 4 and y <= 9
-			var list: Array = WALL_ALIEN if alien else WALL_TECH
+			var list: Array = WALL_ALIEN if alien else {"port": WALL_PORT, "nid": WALL_NID}.get(AbyssKit.theme, WALL_TECH)
 			var pick: Array = list[(x * 5 + y * 3) % list.size()]
 			var sp: Sprite3D = AbyssKit.prop(pick[0], pick[1], true)
 			sp.position = at

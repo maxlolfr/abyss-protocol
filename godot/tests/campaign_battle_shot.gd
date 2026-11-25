@@ -1,5 +1,6 @@
 extends SceneTree
-## Combat lancé depuis la campagne : xvfb-run godot --path . -s res://tests/campaign_battle_shot.gd -- out.png <type de mission>
+## Combat lancé depuis la campagne : xvfb-run godot --path . -s res://tests/campaign_battle_shot.gd -- out.png <type de mission> [qualité] [rotations]
+## Affiche aussi le coût de rendu (appels, objets, primitives) de la vue capturée.
 func _initialize() -> void:
 	var a := OS.get_cmdline_user_args()
 	var out: String = a[0] if a.size() > 0 else "/tmp/cb.png"
@@ -19,10 +20,16 @@ func _initialize() -> void:
 	main._sync()
 	for fq in main.fog_quads.values():
 		fq.visible = false
+	if a.size() > 2 and a[2] != "":
+		main._apply_quality(a[2])
+	for r in (int(a[3]) if a.size() > 3 else 0):
+		main._rotate(1)
 	main.cam.size = 17.0
 	main.pivot.position = Vector3(8, 0, 7)
 	for i in 40:
 		await process_frame
 	root.get_viewport().get_texture().get_image().save_png(out)
+	print("PERF appels=%d objets=%d primitives=%d" % [Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)])
 	print("unités : ", main.battle.units.map(func(u): return "%s:%s" % [u.id, u.kind]))
 	quit()

@@ -10,6 +10,33 @@ const TEX := "res://assets/textures/%s_%s.png"
 static var _mats := {}
 static var _meshes := {}
 
+# ---------- thèmes de carte (station, port de surface, nid organique) ----------
+
+## Thème du décor en cours : "station" (labo, Némésis), "port" (Port attaqué), "nid" (Le Nid).
+static var theme := "station"
+## Substitution de matériaux appliquée aux pièces construites pendant la construction du décor (vide sinon :
+## les unités et les effets gardent leurs matériaux).
+static var remap := {}
+const REMAPS := {
+	"port": {"floor": "asphalt", "hull": "concrete", "grate": "rust", "plate": "rust", "led_cyan": "led_amber", "water": "sea", "crate": "rust"},
+	"nid": {"floor": "rock_floor", "hull": "rock", "grate": "rock_top", "plate": "chitin", "steel": "bone", "dark": "rock", "hazard": "goo",
+		"led_cyan": "led_violet", "led_amber": "led_violet", "water": "bile", "glass": "goo", "brass": "bone", "crate": "chitin"},
+}
+const THEME_OF := {"port": "port", "nid": "nid"}
+
+## Ouvre la construction du décor d'une carte : choisit le thème et active la substitution de matériaux.
+static func begin_theme(map_id: String) -> void:
+	theme = THEME_OF.get(map_id, "station")
+	remap = REMAPS.get(theme, {})
+
+## Ferme la construction du décor (les pièces construites ensuite gardent leurs matériaux d'origine).
+static func end_theme() -> void:
+	remap = {}
+
+## Clé de cache d'une pièce : une version par thème.
+static func _key(key: String) -> String:
+	return key if theme == "station" else theme + ":" + key
+
 # ---------- matériaux ----------
 
 ## Matériaux du kit, créés une fois. Couleurs : bible artistique V3.1.
@@ -44,6 +71,40 @@ static func mat(key: String) -> Material:
 			m.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
 			m.roughness = 0.45
 			m.metallic = 0.0
+		"asphalt": _tex(m, "floor", Color(0.46, 0.45, 0.43), 0.05, 0.5, true)
+		"concrete": _tex(m, "plate", Color(1.0, 0.97, 0.9), 0.05, 0.8, false)
+		"rust": _tex(m, "hull", Color(1.35, 0.72, 0.42), 0.3, 0.9, false)
+		"cont_red": _tex(m, "hull", Color(1.3, 0.34, 0.24), 0.3, 1.4, false)
+		"cont_blue": _tex(m, "hull", Color(0.36, 0.62, 1.05), 0.3, 1.4, false)
+		"cont_teal": _tex(m, "hull", Color(0.28, 0.9, 0.82), 0.3, 1.4, false)
+		"cont_ochre": _tex(m, "hull", Color(1.4, 1.0, 0.34), 0.3, 1.4, false)
+		"sea":
+			_flat(m, Color(0.04, 0.1, 0.14, 0.92), 0.5, 0.06) # bassin portuaire de nuit : reflets des lampadaires
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.emission_enabled = true
+			m.emission = Color("0c3244")
+		"rock_floor":
+			_tex(m, "flesh", Color(0.3, 0.26, 0.32), 0.0, 0.16, true)
+			_matte(m)
+		"rock":
+			_tex(m, "flesh", Color(0.3, 0.26, 0.33), 0.0, 0.3, false)
+			_matte(m)
+		"rock_top":
+			_tex(m, "flesh", Color(0.36, 0.3, 0.4), 0.0, 0.25, true)
+			_matte(m)
+		"chitin":
+			_tex(m, "flesh", Color(0.34, 0.22, 0.4), 0.1, 0.8, false)
+			m.rim_enabled = true
+			m.rim = 0.3
+			m.emission_enabled = true
+			m.emission = Color("1c0830")
+		"bone": _flat(m, Color("a79c88"), 0.05, 0.55)
+		"bile":
+			_flat(m, Color(0.1, 0.04, 0.16, 0.9), 0.2, 0.04) # mares phosphorescentes du Nid
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.emission_enabled = true
+			m.emission = Color("4a1ca8")
+			m.emission_energy_multiplier = 0.3
 		"steel": _flat(m, Color("6d7c88"), 0.85, 0.3)
 		"armor": _flat(m, Color("3a4856"), 0.65, 0.36)
 		"armor_dark": _flat(m, Color("2c3946"), 0.55, 0.45)
@@ -122,6 +183,27 @@ static func tinted(key: String, tex: String, tint: Color, metal := 0.1, emit := 
 		m.rim = rim
 	_mats[key] = m
 	return m
+
+## Matériau texturé (textures du kit) teinté ; `world` = projection dans le repère du monde (sols continus).
+static func _tex(m: StandardMaterial3D, tex: String, tint: Color, metal: float, scale: float, world: bool) -> void:
+	m.albedo_texture = load(TEX % [tex, "albedo"])
+	m.albedo_color = tint
+	m.normal_enabled = true
+	m.normal_texture = load(TEX % [tex, "normal"])
+	m.normal_scale = 0.7
+	m.roughness_texture = load(TEX % [tex, "rough"])
+	m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	m.metallic = metal
+	m.uv1_triplanar = true
+	m.uv1_triplanar_sharpness = 4.0
+	m.uv1_world_triplanar = world
+	m.uv1_scale = Vector3.ONE * scale
+
+## Roche mate : sans scintillement (pas de carte de rugosité, relief adouci).
+static func _matte(m: StandardMaterial3D) -> void:
+	m.roughness_texture = null
+	m.roughness = 0.95
+	m.normal_scale = 0.35
 
 static func _flat(m: StandardMaterial3D, c: Color, metal: float, rough: float) -> void:
 	m.albedo_color = c
@@ -216,11 +298,12 @@ class Piece:
 		for k in tools:
 			var st: SurfaceTool = tools[k]
 			st.commit(out)
-			out.surface_set_material(out.get_surface_count() - 1, AbyssKit.mat(k))
+			out.surface_set_material(out.get_surface_count() - 1, AbyssKit.mat(AbyssKit.remap.get(k, k)))
 		return out
 
 ## Maillage partagé d'une pièce (construit une fois).
 static func mesh_of(key: String, make: Callable) -> ArrayMesh:
+	key = _key(key)
 	if not _meshes.has(key):
 		_meshes[key] = (make.call() as Piece).build()
 	return _meshes[key]
@@ -240,6 +323,7 @@ static func batch(parent: Node3D, key: String, make: Callable, xforms: Array) ->
 
 ## Instancie une pièce (maillage partagé) ; `make` n'est appelé qu'une fois par clé.
 static func spawn(key: String, make: Callable, parent: Node3D, at: Vector3, yaw := 0.0) -> MeshInstance3D:
+	key = _key(key)
 	if not _meshes.has(key):
 		_meshes[key] = (make.call() as Piece).build()
 	var mi := MeshInstance3D.new()
@@ -267,6 +351,10 @@ static func evac_edge() -> Piece:
 
 ## Cloison destructible (KIT-001) : cadre porteur, panneau, faisceau de tuyaux et voyant ambre.
 static func wall(h: float) -> Piece:
+	if theme == "port":
+		return _shed_wall(h)
+	if theme == "nid":
+		return _rib_wall(h)
 	var p := Piece.new()
 	for sx in [-0.43, 0.43]:
 		p.box(Vector3(0.14, h, 0.34), Vector3(sx, h / 2, 0), "plate", 0.025)
@@ -285,6 +373,10 @@ static func wall(h: float) -> Piece:
 
 ## Coque de la station (KIT-004) : soubassement, montants, hublot sur l'océan ou panneau nervuré.
 static func hull(window: bool) -> Piece:
+	if theme == "port":
+		return _quay(window)
+	if theme == "nid":
+		return _cave_wall(window)
 	var p := Piece.new()
 	p.box(Vector3(1.0, 0.95, 1.0), Vector3(0, 0.475, 0), "hull", 0.03)
 	p.box(Vector3(1.02, 0.08, 1.02), Vector3(0, 0.95, 0), "steel", 0.02)
@@ -299,6 +391,68 @@ static func hull(window: bool) -> Piece:
 		p.box(Vector3(1.0, 1.25, 1.0), Vector3(0, 1.58, 0), "hull", 0.03)
 		for sx in [-0.3, 0.0, 0.3]:
 			p.box(Vector3(0.08, 1.2, 1.04), Vector3(sx, 1.58, 0), "steel", 0.02)
+	return p
+
+## Port : cloison d'entrepôt en tôle ondulée rouillée, poteau d'acier, bande de signalisation.
+static func _shed_wall(h: float) -> Piece:
+	var p := Piece.new()
+	p.box(Vector3(1.0, h - 0.1, 0.12), Vector3(0, h / 2, 0), "rust", 0.01)
+	for i in 8: # ondulations
+		var x := -0.44 + i * 0.126
+		p.box(Vector3(0.05, h - 0.14, 0.16), Vector3(x, h / 2, 0), "rust", 0.015)
+	for sx in [-0.47, 0.47]:
+		p.box(Vector3(0.08, h, 0.2), Vector3(sx, h / 2, 0), "steel", 0.015)
+	p.box(Vector3(1.0, 0.08, 0.22), Vector3(0, h - 0.04, 0), "steel", 0.015)
+	p.box(Vector3(1.0, 0.22, 0.2), Vector3(0, 0.11, 0), "concrete", 0.02)
+	p.box(Vector3(0.94, 0.08, 0.17), Vector3(0, 0.75, 0), "hazard", 0.005)
+	return p
+
+## Nid : pilier organique, côtes de chitine tressées, nervure lumineuse.
+static func _rib_wall(h: float) -> Piece:
+	var p := Piece.new()
+	p.box(Vector3(0.9, 0.3, 0.4), Vector3(0, 0.15, 0), "rock", 0.08, Vector3(0, 0, 3))
+	for i in 5:
+		var x := -0.38 + i * 0.19
+		var bend := 0.08 * (1 if i % 2 else -1)
+		p.pipe(Vector3(x, 0.1, 0.0), Vector3(x + bend, h * 0.55, bend), 0.07 - 0.008 * (i % 2), "chitin")
+		p.pipe(Vector3(x + bend, h * 0.55, bend), Vector3(x * 0.7, h, -bend * 0.5), 0.055, "chitin")
+	p.pipe(Vector3(-0.45, h * 0.35, 0.12), Vector3(0.45, h * 0.62, 0.1), 0.03, "goo")
+	p.pipe(Vector3(-0.42, h * 0.8, -0.1), Vector3(0.44, h * 0.48, -0.12), 0.025, "goo")
+	p.box(Vector3(0.95, 0.16, 0.32), Vector3(0, h - 0.06, 0), "chitin", 0.06)
+	return p
+
+## Port : quai bétonné bas, garde-corps, lampadaire au sodium un module sur trois (sur le côté +Z : extérieur).
+static func _quay(lamp: bool) -> Piece:
+	var p := Piece.new()
+	p.box(Vector3(1.0, 0.75, 1.0), Vector3(0, 0.375, 0), "concrete", 0.04)
+	p.box(Vector3(1.04, 0.1, 1.04), Vector3(0, 0.8, 0), "concrete", 0.03)
+	p.box(Vector3(1.0, 0.06, 0.06), Vector3(0, 0.6, -0.52), "hazard", 0.005)
+	for sx in [-0.42, 0.42]:
+		p.pipe(Vector3(sx, 0.85, 0.2), Vector3(sx, 1.85, 0.2), 0.03, "steel")
+	p.pipe(Vector3(-0.5, 1.82, 0.2), Vector3(0.5, 1.82, 0.2), 0.025, "steel")
+	p.pipe(Vector3(-0.5, 1.35, 0.2), Vector3(0.5, 1.35, 0.2), 0.018, "steel")
+	if lamp:
+		p.pipe(Vector3(0, 0.85, 0.25), Vector3(0, 3.3, 0.25), 0.05, "dark")
+		p.pipe(Vector3(0, 3.3, 0.25), Vector3(0, 3.42, -0.25), 0.035, "dark")
+		p.box(Vector3(0.26, 0.08, 0.36), Vector3(0, 3.4, -0.35), "dark", 0.02)
+		p.box(Vector3(0.2, 0.02, 0.28), Vector3(0, 3.355, -0.35), "led_amber", 0.0)
+	else:
+		p.add(cyl(0.12, 0.15, 0.22, 10), Vector3(0.2, 0.96, -0.2), "dark") # bollard
+	return p
+
+## Nid : paroi de caverne, blocs de roche empilés, cristaux violets dans les variantes « lumineuses ».
+static func _cave_wall(glow: bool) -> Piece:
+	var p := Piece.new()
+	p.box(Vector3(1.1, 1.0, 1.1), Vector3(0, 0.5, 0), "rock", 0.18, Vector3(0, 8, 2))
+	p.box(Vector3(0.95, 0.85, 1.0), Vector3(0.06, 1.35, 0.05), "rock", 0.2, Vector3(4, -14, -5))
+	p.box(Vector3(0.8, 0.7, 0.85), Vector3(-0.08, 2.05, 0.1), "rock", 0.22, Vector3(-6, 22, 6))
+	p.box(Vector3(0.5, 0.35, 0.5), Vector3(0.18, 2.5, 0.15), "rock", 0.12, Vector3(10, 40, 0))
+	if glow:
+		for i in 3:
+			var at := Vector3(-0.25 + i * 0.22, 0.9 + 0.35 * (i % 2), -0.5)
+			p.add(PrismMesh.new(), at, "led_violet", Vector3(-25 + 20 * i, 30 * i, 15 - 15 * i), Vector3(0.12, 0.35 - 0.06 * i, 0.12))
+	else:
+		p.pipe(Vector3(-0.4, 0.2, -0.52), Vector3(0.1, 1.6, -0.5), 0.04, "goo")
 	return p
 
 ## Caisse de munitions militaire (KIT-005) : couvert partiel.
@@ -349,6 +503,11 @@ static func deck_high() -> Piece:
 
 ## Garde-corps sur un bord de passerelle (le bord est en +Z ; tourner la pièce pour les autres côtés).
 static func railing() -> Piece:
+	if theme == "nid": # bord de corniche : lèvre de roche irrégulière
+		var r := Piece.new()
+		for i in 3:
+			r.box(Vector3(0.36, 0.16 + 0.06 * (i % 2), 0.16), Vector3(-0.33 + i * 0.33, 1.02, 0.42), "rock", 0.05, Vector3(0, 12 * (i - 1), 8 * (i - 1)))
+		return r
 	var p := Piece.new()
 	p.pipe(Vector3(-0.5, 1.95, 0.46), Vector3(0.5, 1.95, 0.46), 0.022, "steel")
 	p.pipe(Vector3(-0.5, 1.5, 0.46), Vector3(0.5, 1.5, 0.46), 0.016, "steel")
@@ -374,6 +533,8 @@ static func stairs(z0: float, z1: float) -> Piece:
 
 ## Bassin : fond en caillebotis immergé + surface d'eau.
 static func pool() -> Piece:
+	if theme == "port": # eau du bassin portuaire : profonde, sans fond visible
+		return Piece.new().box(Vector3(1.0, 0.03, 1.0), Vector3(0, -0.16, 0), "sea", 0.0)
 	var p := Piece.new().box(Vector3(1.0, 0.06, 1.0), Vector3(0, -0.2, 0), "grate", 0.0)
 	p.box(Vector3(1.0, 0.03, 1.0), Vector3(0, -0.02, 0), "water", 0.0)
 	return p
@@ -436,6 +597,14 @@ const COVERS := [["p007_s1", 0.9, "p007_s4"], ["k005_1", 1.1, "k010_2"], ["p009_
 	["k008_3", 1.5, "k010_2"], ["k006_6", 1.3, "k010_2"], ["k005_5", 1.0, "k010_2"], ["k008_6", 0.8, "k010_2"],
 	["p008_s2", 0.95, "k010_2"], ["p005_s2", 1.05, "k010_2"], ["k007_1", 1.1, "k010_2"], ["k007_5", 1.05, "k010_2"]]
 
+const COVERS_PORT := [["k005_1", 1.1, "k010_2"], ["k005_4", 0.8, "k010_2"], ["p007_s1", 0.9, "p007_s4"], ["p009_s2", 1.0, "p009_s4"],
+	["k005_5", 1.0, "k010_2"], ["p008_s1", 0.95, "k010_2"], ["k005_2", 1.0, "k010_2"], ["p004_s4", 1.15, "k010_2"]]
+const COVERS_NID := [["k009_4", 1.35, "k010_5"], ["k009_6", 1.25, "k010_5"], ["k010_5", 0.85, "k010_5"], ["k009_2", 1.5, "k010_5"], ["k009_1", 1.25, "k010_5"]]
+
+## Couverts bas du thème en cours.
+static func covers() -> Array:
+	return {"port": COVERS_PORT, "nid": COVERS_NID}.get(theme, COVERS)
+
 ## Objet peint, debout face à la caméra (axe vertical), éclairé par la scène. `height` = hauteur à l'écran (m).
 static func prop(name: String, height: float, shadow := false) -> Sprite3D:
 	var t: Texture2D = load(PROP % name)
@@ -448,7 +617,8 @@ static func prop(name: String, height: float, shadow := false) -> Sprite3D:
 	sp.double_sided = true
 	sp.alpha_cut = SpriteBase3D.ALPHA_CUT_OPAQUE_PREPASS
 	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	sp.modulate = Color(0.78, 0.84, 0.92) # teinte froide de la station
+	# teinte d'ambiance : acier froid (station), sodium de nuit (port), violet (nid)
+	sp.modulate = {"port": Color(0.86, 0.82, 0.76), "nid": Color(0.78, 0.7, 0.88)}.get(theme, Color(0.78, 0.84, 0.92))
 	sp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sp.scale = Vector3(1, 1.18, 1) # compense le raccourci de la caméra plongeante (35°)
 	return sp
