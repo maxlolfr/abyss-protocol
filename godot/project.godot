@@ -4,6 +4,10 @@ config_version=5
 config/name="ABYSS PROTOCOL — prototype Godot"
 run/main_scene="res://view/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+boot_splash/bg_color=Color(0.027, 0.051, 0.086, 1)
+boot_splash/image="res://assets/ui/screens/loading.png"
+boot_splash/fullsize=true
+boot_splash/use_filter=true
 
 [display]
 window/size/viewport_width=960

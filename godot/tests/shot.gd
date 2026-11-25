@@ -5,6 +5,7 @@ func _initialize() -> void:
 	var out: String = args[0] if args.size() > 0 else "/tmp/shot.png"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://abyss_save.json"))
 	var main: Node = load("res://view/main.tscn").instantiate()
+	main.show_intro = false
 	root.add_child(main)
 	for i in 30:
 		await process_frame

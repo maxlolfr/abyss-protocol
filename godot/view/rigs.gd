@@ -292,9 +292,9 @@ func fore_len() -> float:
 # ---------- Carapace : crustacé lourd à six pattes et deux pinces ----------
 
 func _carapace() -> void:
-	var shell := AbyssKit.tinted("cara_shell", "flesh", Color(0.62, 0.36, 0.2), 0.45, Color.BLACK, 0.3)
-	var plate := AbyssKit.tinted("cara_plate", "flesh", Color(0.85, 0.55, 0.32), 0.5)
-	var leg := AbyssKit.tinted("cara_leg", "flesh", Color(0.3, 0.17, 0.1), 0.3)
+	var shell := AbyssKit.tinted("cara_shell", "flesh", Color(0.3, 0.22, 0.2), 0.55, Color.BLACK, 0.35)
+	var plate := AbyssKit.tinted("cara_plate", "flesh", Color(0.42, 0.3, 0.26), 0.6)
+	var leg := AbyssKit.tinted("cara_leg", "flesh", Color(0.18, 0.13, 0.12), 0.4)
 	joint("Body", "", Vector3(0, 0.62, 0))
 	part("Body", _sph(0.55, 0.6), Vector3.ZERO, shell, Vector3.ZERO, Vector3(1.0, 1.0, 1.2))
 	part("Body", _sph(0.45, 0.3), Vector3(0, -0.14, 0.05), leg, Vector3.ZERO, Vector3(1, 1, 1.2))
