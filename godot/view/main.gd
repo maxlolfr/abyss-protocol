@@ -606,8 +606,10 @@ func _tap(pos: Vector2) -> void:
 		var label := "Tir précis" if m == "aimed" else "Tir rapide"
 		if info["error"] != "":
 			hud.set_preview("%s : %s" % [label, info["error"]], false)
+			hud.show_foe(u)
 			return
 		pending = {"cell": c, "cmd": {"type": "shoot", "unit": selected.id, "target": u.id, "mode": m}}
+		hud.show_foe(u, info["chance"])
 		var hc: Color = Color("52c99a") if info["chance"] >= 50 else (AbyssHud.AMBER if info["chance"] >= 25 else AbyssHud.RED)
 		_dest_marker(u.cell, "%d %%" % info["chance"], hc, "%d UT" % info["cost"])
 		hud.set_preview("%s · %d UT · %d %% · couvert %s · reste %d UT" % [label, info["cost"], info["chance"], ["aucun", "partiel", "total"][info["cover"]], selected.tu - info["cost"]], true)
@@ -1048,15 +1050,14 @@ func _play(events: Array) -> void:
 				if not _story.has("contact_" + u.kind) and speed <= 1.0:
 					# présentation de la créature au premier contact (zoom court, fiche, retour)
 					_story["contact_" + u.kind] = true
-					var desc: String = {"nereide": "NÉRÉIDE · éclaireuse amphibie, rapide, attaque de flanc",
-						"carapace": "CARAPACE · crustacé lourd blindé, jet d'acide à courte portée",
-						"spectre": "SPECTRE · entité psionique, ignore les couverts, désoriente"}.get(u.kind, u.name)
 					var keep := cam.size
 					var tw := create_tween().set_parallel()
 					tw.tween_property(pivot, "position", Vector3(u.cell.x + 0.5, 0, u.cell.y + 0.5), 0.35).set_trans(Tween.TRANS_SINE)
 					tw.tween_property(cam, "size", 4.2, 0.35).set_trans(Tween.TRANS_SINE)
-					hud.flash(desc, AbyssHud.RED)
-					await get_tree().create_timer(1.4).timeout
+					hud.flash("Nouvelle espèce : %s" % u.name, AbyssHud.RED)
+					hud.show_foe(u)
+					await get_tree().create_timer(1.6).timeout
+					hud.hide_foe()
 					create_tween().tween_property(cam, "size", keep, 0.4).set_trans(Tween.TRANS_SINE)
 				if battle.side != "human":
 					create_tween().tween_property(pivot, "position", Vector3(u.cell.x + 0.5, 0, u.cell.y + 0.5), 0.3 / speed)

@@ -32,10 +32,21 @@ var squad := {}
 var bars := {} # id -> [barre PV, barre UT]
 var menu: PanelContainer
 var end_panel: PanelContainer
-var end_lbl: Label
 var _toast_t := 0.0
 var _settings := {"sound": true, "speed": 1.0, "shadows": true, "cine": true, "fps": true, "quality": "haute"}
 var quality_btn: Button
+var badges := {} # id -> {nom d'icône: TextureRect}
+var foe_panel: PanelContainer
+var _foe_widgets := {}
+
+## Rôles affichés sur les cartes de l'escouade.
+const ROLES := {"s1": "Fusilier", "s2": "Lourd", "s3": "Précision", "s4": "Médecin"}
+## Fiches des hostiles (bestiaire) : portrait, description courte.
+const FOES := {
+	"nereide": ["res://assets/ui/portraits/nereide.jpg", "Éclaireuse amphibie, rapide. Cherche le flanc et nage dans les bassins."],
+	"spectre": ["res://assets/ui/portraits/spectre.jpg", "Entité psionique en lévitation. Son onde ignore les couverts et draine les UT."],
+	"carapace": ["res://assets/units/sprites/carapace_q34.png", "Crustacé lourd très blindé. Jet d'acide à courte portée : gardez vos distances."],
+}
 
 func _ready() -> void:
 	var root := Control.new()
@@ -58,7 +69,8 @@ func _ready() -> void:
 	root.add_child(sq)
 	for id in ["s1", "s2", "s3", "s4"]:
 		var b := _button(sq, id, func(): select_unit.emit(id), 13)
-		b.custom_minimum_size = Vector2(158, 58)
+		b.custom_minimum_size = Vector2(166, 74)
+		b.add_theme_font_size_override("font_size", 12)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		# portrait tiré des planches de Max + barres PV (vert) et UT (cyan)
 		b.icon = load("res://assets/ui/portraits/%s.jpg" % id)
@@ -70,7 +82,7 @@ func _ready() -> void:
 			var bg := ColorRect.new()
 			bg.color = Color(0, 0, 0, 0.55)
 			bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			bg.position = Vector2(60, 44 + k * 6)
+			bg.position = Vector2(60, 61 + k * 6)
 			bg.size = Vector2(90, 4)
 			b.add_child(bg)
 			var fg := ColorRect.new()
@@ -81,6 +93,25 @@ func _ready() -> void:
 			pair.append(fg)
 		bars[id] = pair
 		squad[id] = b
+		# badges d'état en haut à droite : artefact, genou, veille, saignement
+		var bx := HBoxContainer.new()
+		bx.position = Vector2(96, 5)
+		bx.custom_minimum_size = Vector2(64, 16)
+		bx.alignment = BoxContainer.ALIGNMENT_END
+		bx.add_theme_constant_override("separation", 2)
+		bx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(bx)
+		badges[id] = {}
+		for ic in [["interact", CYAN], ["kneel", TEXT], ["watch", AMBER], ["heal", RED]]:
+			var t := TextureRect.new()
+			t.texture = load("res://assets/ui/icons/%s.png" % ic[0])
+			t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			t.custom_minimum_size = Vector2(15, 15)
+			t.modulate = ic[1]
+			t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bx.add_child(t)
+			badges[id][ic[0]] = t
 	# haut droite : caméra + menu + i/s
 	var tr := HBoxContainer.new()
 	tr.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -171,6 +202,7 @@ func _ready() -> void:
 			b.add_theme_constant_override("icon_max_width", 34)
 		actions[m] = b
 	actions["end"].custom_minimum_size = Vector2(92, 70)
+	_build_foe_panel(root)
 	info = _label(root, "", 12, Color(0.75, 0.88, 0.94))
 	info.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	info.position = Vector2(margin, -22)
@@ -190,12 +222,6 @@ func _ready() -> void:
 	end_panel.add_theme_stylebox_override("panel", frame())
 	end_panel.visible = false
 	root.add_child(end_panel)
-	var ev := VBoxContainer.new()
-	ev.alignment = BoxContainer.ALIGNMENT_CENTER
-	end_panel.add_child(ev)
-	end_lbl = _label(ev, "", 16, TEXT)
-	end_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_button(ev, "Nouvelle mission", func(): restart.emit(), 15)
 
 func _process(delta: float) -> void:
 	fps_lbl.text = ("%d i/s" % Engine.get_frames_per_second()) if _settings["fps"] else ""
@@ -276,6 +302,8 @@ func set_quality(q: String) -> void:
 		quality_btn.text = "Qualité : %s" % q
 
 func set_preview(text: String, can_confirm: bool) -> void:
+	if text == "":
+		hide_foe()
 	preview.text = text
 	preview_box.visible = text != ""
 	confirm_btn.visible = can_confirm
@@ -289,8 +317,15 @@ func refresh(b: AbyssBattle, sel: AbyssUnit, mode: String, busy: bool) -> void:
 	for id in squad:
 		var u := b.unit(id)
 		var btn: Button = squad[id]
-		var state := "évacué" if u.evacuated else ("perdu" if not u.alive else "%d PV · %d UT" % [u.hp, u.tu])
-		btn.text = "%s%s\n%s\n" % [u.name.replace("Sgt. ", ""), " ◆" if u.carrying else "", state]
+		var w: Dictionary = AbyssData.WEAPONS[u.weapon]
+		var state := "Évacué" if u.evacuated else ("Mort au combat" if not u.alive else "%d PV · %d UT" % [u.hp, u.tu])
+		btn.text = "%s\n%s · %d/%d\n%s\n" % [u.name.replace("Sgt. ", ""), ROLES.get(id, ""), u.ammo, w.get("mag", 0), state]
+		btn.modulate = Color(1, 1, 1) if u.alive and not u.evacuated else Color(0.55, 0.58, 0.62)
+		var bd: Dictionary = badges[id]
+		bd["interact"].visible = u.carrying
+		bd["kneel"].visible = u.alive and u.kneeling
+		bd["watch"].visible = u.alive and u.watching
+		bd["heal"].visible = u.alive and u.wounds > 0
 		bars[id][0].size.x = 90.0 * clampf(float(u.hp) / u.max_hp, 0, 1) if u.alive else 0.0
 		bars[id][1].size.x = 90.0 * clampf(float(u.tu) / u.max_tu, 0, 1) if u.alive else 0.0
 		bars[id][0].color = GREEN if u.hp > u.max_hp * 0.5 else (AMBER if u.hp > u.max_hp * 0.25 else RED)
@@ -326,21 +361,132 @@ func refresh(b: AbyssBattle, sel: AbyssUnit, mode: String, busy: bool) -> void:
 	actions["end"].add_theme_color_override("font_color", AMBER)
 	actions["end"].disabled = busy or b.side != "human" or b.outcome != "ongoing"
 
+## Débriefing : verdict, objectifs, état de chaque soldat, bilan, recherche débloquée.
 func show_end(b: AbyssBattle) -> void:
+	for c in end_panel.get_children():
+		c.queue_free()
+	end_panel.custom_minimum_size = Vector2(600, 0)
 	var carried := b.units.any(func(u): return u.carrying and u.evacuated)
-	var title := "VICTOIRE" if b.outcome == "victory" else ("RETRAITE" if b.units.any(func(u): return u.evacuated) else "ÉCHEC")
-	end_lbl.text = "%s\nArtefact : %s · Journal : %s\nTours : %d · Hostiles neutralisés : %d/%d · Soldats perdus : %d" % [
-		title, "récupéré" if carried or (b.outcome == "victory" and b.living(false).is_empty()) else "perdu", "oui" if b.logs_done else "non",
-		b.turn, b.units.filter(func(x): return not x.human).size() - b.living(false).size(), b.units.filter(func(x): return not x.human).size(), b.units.filter(func(u): return u.human and not u.alive).size()]
-	if carried and not end_panel.has_meta("research"):
-		end_panel.set_meta("research", true)
-		var card := TextureRect.new() # fiche de recherche RES-001 débloquée
+	var retreat := b.units.any(func(u): return u.evacuated)
+	var title := "VICTOIRE" if b.outcome == "victory" else ("RETRAITE" if retreat else "ÉCHEC")
+	var tcol := GREEN if b.outcome == "victory" else (AMBER if retreat else RED)
+	var foes := b.units.filter(func(x): return not x.human)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	end_panel.add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	_label(head, title, 30, tcol)
+	var sub := _label(head, "   DÉBRIEFING · OPÉRATION NÉMÉSIS · %d tours" % b.turn, 13, Color(0.7, 0.8, 0.86))
+	sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 14)
+	v.add_child(cols)
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 4)
+	left.custom_minimum_size = Vector2(300, 0)
+	cols.add_child(left)
+	_label(left, "OBJECTIFS", 13, AMBER)
+	for o in [["Artefact extrait", carried], ["Journal du terminal", b.logs_done]]:
+		var row := HBoxContainer.new()
+		left.add_child(row)
+		var st := _label(row, "RÉUSSI " if o[1] else "ÉCHOUÉ ", 13, GREEN if o[1] else RED)
+		st.custom_minimum_size = Vector2(62, 0)
+		_label(row, o[0], 13, TEXT)
+	_label(left, "ESCOUADE", 13, AMBER)
+	for u in b.units.filter(func(x): return x.human):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		left.add_child(row)
+		var pic := TextureRect.new()
+		pic.texture = load("res://assets/ui/portraits/%s.jpg" % u.id)
+		pic.custom_minimum_size = Vector2(34, 34)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		if not u.alive:
+			pic.modulate = Color(0.45, 0.45, 0.48)
+		row.add_child(pic)
+		var nm := _label(row, u.name.replace("Sgt. ", ""), 14, TEXT)
+		nm.custom_minimum_size = Vector2(70, 0)
+		nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var st: Array = ["Évacué%s · %d PV" % [" (artefact)" if u.carrying else "", u.hp], GREEN] if u.evacuated else (["Mort au combat", RED] if not u.alive else ["Laissé sur place · %d PV" % u.hp, AMBER])
+		_label(row, st[0], 13, st[1]).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 4)
+	cols.add_child(right)
+	_label(right, "BILAN", 13, AMBER)
+	_label(right, "Hostiles neutralisés : %d/%d\nSoldats perdus : %d/4" % [foes.size() - b.living(false).size(), foes.size(), b.units.filter(func(u): return u.human and not u.alive).size()], 13, TEXT)
+	if carried:
+		_label(right, "RECHERCHE DÉBLOQUÉE", 13, CYAN)
+		var card := TextureRect.new() # fiche de recherche RES-001
 		card.texture = load("res://assets/ui/screens/research_res001.jpg")
-		card.custom_minimum_size = Vector2(400, 224)
+		card.custom_minimum_size = Vector2(250, 140)
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		end_lbl.get_parent().add_child(card)
-		end_lbl.get_parent().move_child(card, 0)
-		end_lbl.text += "\nRecherche débloquée : artefact alien inconnu (RES-001)"
-		end_panel.position.y -= 120
+		right.add_child(card)
+		_label(right, "Artefact alien inconnu (RES-001)", 12, Color(0.7, 0.8, 0.86))
+	var again := _button(v, "Nouvelle mission", func(): restart.emit(), 15)
+	again.custom_minimum_size = Vector2(0, 44)
+	again.add_theme_stylebox_override("normal", tex_box("btn_orange"))
 	end_panel.visible = true
+	set_preview("", false)
+	await get_tree().process_frame
+	end_panel.reset_size()
+	end_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+
+## Fiche ennemi (haut droite) : portrait, PV, armure, arme, conseil ; chance de toucher si un tir est visé.
+func _build_foe_panel(root: Control) -> void:
+	foe_panel = PanelContainer.new()
+	foe_panel.add_theme_stylebox_override("panel", frame())
+	foe_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	foe_panel.position = Vector2(-262 - margin, 58)
+	foe_panel.custom_minimum_size = Vector2(262, 0)
+	foe_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	foe_panel.visible = false
+	root.add_child(foe_panel)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	foe_panel.add_child(h)
+	var pic := TextureRect.new()
+	pic.custom_minimum_size = Vector2(64, 64)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(pic)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.custom_minimum_size = Vector2(160, 0)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(v)
+	var name_l := _label(v, "", 16, RED)
+	var bar_bg := ColorRect.new()
+	bar_bg.custom_minimum_size = Vector2(160, 5)
+	bar_bg.color = Color(0, 0, 0, 0.6)
+	bar_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(bar_bg)
+	var bar := ColorRect.new()
+	bar.size = Vector2(160, 5)
+	bar.color = RED
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar_bg.add_child(bar)
+	var stats := _label(v, "", 12, TEXT)
+	var desc := _label(v, "", 11, Color(0.7, 0.8, 0.86))
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(160, 0)
+	_foe_widgets = {"pic": pic, "name": name_l, "bar": bar, "stats": stats, "desc": desc}
+
+func show_foe(u: AbyssUnit, chance := -1) -> void:
+	var f: Array = FOES.get(u.kind, ["", u.name])
+	var w: Dictionary = AbyssData.WEAPONS[u.weapon]
+	_foe_widgets["pic"].texture = load(f[0]) if f[0] != "" and ResourceLoader.exists(f[0]) else null
+	_foe_widgets["name"].text = u.name.to_upper() + ("   ·   %d %%" % chance if chance >= 0 else "")
+	_foe_widgets["bar"].size.x = 160.0 * clampf(float(u.hp) / u.max_hp, 0, 1)
+	_foe_widgets["stats"].text = "%d/%d PV · armure %d · %s (%d)" % [u.hp, u.max_hp, u.armor, w["name"], w["range"]]
+	_foe_widgets["desc"].text = f[1]
+	foe_panel.visible = true
+	menu.visible = false
+
+func hide_foe() -> void:
+	if foe_panel:
+		foe_panel.visible = false

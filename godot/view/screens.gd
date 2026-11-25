@@ -85,6 +85,7 @@ func _portrait(parent: Node, path: String, size: int) -> void:
 	p.custom_minimum_size = Vector2(size, size)
 	p.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	p.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	p.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	parent.add_child(p)
 
 ## Écran titre : illustration ENV-001, logo, Continuer / Nouvelle mission.
@@ -135,7 +136,7 @@ func show_briefing() -> void:
 	panel.offset_right = margin + 470
 	root.add_child(panel)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
+	v.add_theme_constant_override("separation", 4)
 	panel.add_child(v)
 	_label(v, "BRIEFING  ·  OPÉRATION NÉMÉSIS", 22, CYAN, 3)
 	_label(v, "Laboratoire de confinement englouti. Une cuve centrale abrite l'artefact Némésis ; la station ne répond plus et des signatures non humaines ont été relevées.", 14, DIM)
@@ -151,10 +152,10 @@ func show_briefing() -> void:
 		c.custom_minimum_size = Vector2(138, 0)
 		hz.add_child(c)
 		if e[0] != "":
-			_portrait(c, "res://assets/ui/portraits/%s.jpg" % e[0], 72)
+			_portrait(c, "res://assets/ui/portraits/%s.jpg" % e[0], 58)
 		else:
 			var q := _label(c, "?", 48, Color(0.9, 0.5, 0.4), 4)
-			q.custom_minimum_size = Vector2(72, 72)
+			q.custom_minimum_size = Vector2(58, 58)
 			q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_label(c, e[1], 14, TEXT)
 		_label(c, e[2], 11, DIM)
@@ -162,11 +163,14 @@ func show_briefing() -> void:
 	var sq := HBoxContainer.new()
 	sq.add_theme_constant_override("separation", 8)
 	v.add_child(sq)
-	for s in [["s1", "Walker"], ["s2", "Okafor"], ["s3", "Lind"], ["s4", "Moreau"]]:
+	for s in [["s1", "Walker", "Fusilier"], ["s2", "Okafor", "Lourd"], ["s3", "Lind", "Précision"], ["s4", "Moreau", "Médecin"]]:
 		var c := VBoxContainer.new()
+		c.add_theme_constant_override("separation", 0)
+		c.custom_minimum_size = Vector2(96, 0)
 		sq.add_child(c)
-		_portrait(c, "res://assets/ui/portraits/%s.jpg" % s[0], 64)
-		_label(c, s[1], 12, TEXT)
+		_portrait(c, "res://assets/ui/portraits/%s.jpg" % s[0], 50)
+		_label(c, s[1], 13, TEXT)
+		_label(c, s[2], 11, DIM)
 	var go := HBoxContainer.new()
 	go.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	go.position = Vector2(-300 - margin, -80)

@@ -129,7 +129,14 @@ func _init() -> void:
 	var evr := rf.apply({"type": "interact", "unit": "s1"})
 	check(evr.any(func(x): return x["t"] == "spawn") and rf.living(false).size() == 4, "Némésis : premier renfort à l'alarme")
 	rf.apply({"type": "end_turn"})
-	check(rf.units.any(func(x): return x.id == "r2"), "Némésis : second renfort au tour suivant")
+	check(not rf.units.any(func(x): return x.id == "r2"), "Némésis : le second renfort n'arrive pas tout de suite")
+	rf.apply({"type": "end_turn"})
+	check(rf.units.any(func(x): return x.id == "r2"), "Némésis : second renfort deux tours après l'alarme")
+	var el := AbyssBattle.new("elim", "nemesis")
+	for u in el.living(false):
+		u.alive = false
+	el._check_outcome([])
+	check(el.outcome == "ongoing", "Némésis : éliminer les hostiles ne suffit pas")
 	check(AbyssBattle.from_dict(JSON.parse_string(JSON.stringify(rf.to_dict()))).units.size() == rf.units.size(), "Némésis : les renforts sont sauvegardés")
 	var nwins := 0
 	var nends := 0
