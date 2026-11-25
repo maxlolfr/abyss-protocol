@@ -110,3 +110,6 @@ Coût de rendu (primitives, `campaign_battle_shot.gd`) avant → après : épave
 - Primitives mesurées (haute → moyenne → allégée) : épave 492 k → 306 k → 173 k, Nid 712 k → 384 k → 249 k, port 259 k → 246 k.
 - `trappe` (metal hatch window, plaque plate) : posée à plat sur une dalle de la station sur 17, 0,85 m de large (`ModelKit.node(…, "width")`). `passerelle_etroite` (catwalk 0,33 × 1 m) : rangée à sa taille réelle (14 400 triangles), en attente d'un emplacement.
 - Mesure sur appareil (i/s) : compteur dans le menu du jeu ; profils haute / moyenne / basse / allégée et baisse automatique sous 24 i/s (déjà en place).
+
+### Sols décompressés (25/11, 23 h 58, autorisation de Max pour les outils extérieurs)
+`tools/unpack_glb.cjs` (décodeur meshoptimizer, cloné dans /home/claude/vendor/mo) remet les GLB gltfpack en GLB standard. Les 4 sols sont maintenant dans le jeu : `kit/station/sol_dalle` (+ `_02`), `kit/nid/sol_dalle` (+ `_02`). Coût en qualité moyenne : épave 292 k, Nid 406 k primitives. Rien à réexporter.
