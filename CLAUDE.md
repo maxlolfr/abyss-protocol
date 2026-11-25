@@ -25,6 +25,12 @@ Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA
 - Format de réponse demandé par Max : barre 🟩⬜ + % + coût estimé en tokens + temps estimé, à chaque message ; prévenir quand la fenêtre devient trop longue.
 - Outils locaux : Godot 4.7.2 à retélécharger dans /home/claude/bin (marche). Tests `tests/run_tests.gd` (42), équilibre `tests/balance.gd -- 80`, coût de rendu `tests/perf.gd -- <qualité>`, captures `tests/shot.gd` (5e argument = qualité), `tests/ui_shot.gd`, `tests/screens_shot.gd`, partie auto `tests/play_smoke.gd`.
 
+## Modèles 3D Tripo (25/11 20 h, branche `claude-b/modeles-tripo`)
+- Max a acheté Tripo et modélise ses personnages. Versions allégées (textures 1024 JPEG, `tools/lighten_glb.py`) dans `godot/assets/units/models/` : okafor (s2), lind (s3), nereide, brute. Branchées par `view/model_unit.gd` (priorité sur les sprites, animations du modèle entier car pas de squelette). Originaux jamais publiés.
+- `armored_soldier` = même maillage qu'Okafor (ancienne texture) : non utilisé. `alien_creature.fbx` : sans texture, espèce inconnue : non utilisé, question posée à Max.
+- À demander : versions avec auto-rig + animations Tripo (idle, marche, tir), armes en main ou armes séparées, Walker et Moreau, Carapace, Spectre.
+- Aperçus : `tests/model_preview.gd`, `tests/lineup.gd` (inclut la Brute).
+
 ## Prochaines étapes probables
 1. Suite de `docs/NEMESIS.md` : N1 à N4 faits (N4 = refonte visuelle avec les sprites des planches de Max, interface, performance). Inventaire des ressources : `Game-studio-ai/docs/studio/art/abyss-protocol/ASSET_INVENTORY.md`. Max a autorisé (25/11 15 h 36) la publication des versions allégées de ses créations dans le jeu public, jamais les originaux, zips, planches complètes ni prompts.
 2. Mesures d'i/s de Max (haute / moyenne / allégée) ; Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).
