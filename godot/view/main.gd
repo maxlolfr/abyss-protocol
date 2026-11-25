@@ -250,7 +250,7 @@ func _build_env() -> void:
 	sun.shadow_bias = 0.04
 	sun.shadow_normal_bias = 1.2
 	sun.shadow_blur = 1.5
-	sun.rotation_degrees = Vector3(-58, 28, 0)
+	sun.rotation_degrees = Vector3(-52, -62, 0)
 	add_child(sun)
 	# contre-jour froid venu des baies (sans ombre) : sépare les silhouettes du fond
 	var rim := DirectionalLight3D.new()
