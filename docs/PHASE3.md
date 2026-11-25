@@ -44,8 +44,16 @@ Grades (Recrue → Capitaine) avec gains à chaque promotion, XP (survie, élimi
   - combats joués par l'IA d'escouade (qui perd beaucoup de soldats) : défaite par la menace vers octobre. Un joueur humain doit se situer entre les deux : **à confirmer par les essais de Max**.
 
 ## Limites connues (reportées)
-- Port et Nid utilisent l'habillage du laboratoire (décor provisoire) en attendant les environnements Tripo.
 - Une seule base (pas d'extension mondiale), pas de défense de base, pas de prisonniers (salle de confinement sans usage), pas de drones.
 - Les recrues réutilisent les apparences de Lind et Moreau ; l'arme dessinée suit l'apparence, pas l'arme réellement portée.
 - Pas de musique propre au géoscape (Max fournit les morceaux).
 - Équilibrage stratégique à valider en jeu réel.
+
+## Décors Port attaqué et Le Nid (25/11, 22 h 30, branche `claude-b/decors-port-nid`)
+- Thèmes de carte (`AbyssKit.begin_theme`) : le kit garde ses formes et change de matériaux pendant la construction du décor (les unités et les effets ne sont pas touchés) ; quelques pièces changent de forme.
+- **Port** (nuit, surface) : sol d'asphalte, quai bétonné bas avec garde-corps, bollards et lampadaires au sodium, cloisons d'entrepôt en tôle ondulée rouillée, eau du bassin profonde, mer au nord, conteneurs empilés et grue portuaire hors carte, pluie oblique, couverts de quai (caisses, sacs de sable, fûts, citerne, chariot), matériel de quai le long des bords.
+- **Le Nid** (caverne) : sol et parois de roche mate, piliers de chitine tressée à nervures lumineuses, corniches de roche, mares phosphorescentes, cristaux violets, stalagmites hors carte, spores qui montent ; couverts organiques (cocons, cristaux, masses tentaculaires).
+- Les objets hauts hors carte se masquent côté caméra comme la coque. Ambiance (couleur, brume, soleil) propre à chaque carte, conservée en qualité allégée.
+- Coût de rendu (vue entière, 2 rotations) : Port 346 appels (haute) / 216 (allégée), Nid 308 / 204, Némésis 345 / 231 : équivalent.
+- Captures : `tests/campaign_battle_shot.gd -- out.png port|nid [qualité] [rotations]` (affiche aussi le coût de rendu).
+- Remplaçables plus tard par les environnements Tripo de Max.

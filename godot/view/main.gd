@@ -43,6 +43,8 @@ var hull_nodes: Array = [] # [Node3D, normale]
 var fog_quads := {}
 var world_env: WorldEnvironment
 var snow: CPUParticles3D
+var amb_color := Color("1e2a34") # ambiance de la carte (thème), renforcée en qualité allégée
+var amb_energy := 0.55
 var quality := "haute"
 const QUALITIES := ["haute", "moyenne", "basse", "allégée"]
 var mobile := false
@@ -73,10 +75,12 @@ var show_intro := true # écran titre + briefing (désactivé par les captures e
 
 func _ready() -> void:
 	battle = _load_or_new()
+	AbyssKit.begin_theme(battle.map_id) # décor propre à la carte : station, port de surface, nid organique
 	_build_env()
 	add_child(dressing)
 	_build_map()
 	_build_props()
+	AbyssKit.end_theme()
 	for u in battle.units:
 		_build_unit(u)
 	add_child(overlay)
@@ -264,6 +268,20 @@ func _build_env() -> void:
 	env.glow_intensity = 0.5
 	env.glow_bloom = 0.0
 	env.glow_hdr_threshold = 1.2
+	if AbyssKit.theme == "port": # nuit portuaire : ciel d'encre, lune froide, brume de mer
+		env.background_color = Color("0a1119")
+		env.ambient_light_color = Color("26313d")
+		env.ambient_light_energy = 0.7
+		env.fog_light_color = Color("0c1620")
+		env.fog_density = 0.018
+	elif AbyssKit.theme == "nid": # caverne : noir violacé, ambiance chaude de chair
+		env.background_color = Color("06030a")
+		env.ambient_light_color = Color("2a1f33")
+		env.ambient_light_energy = 0.6
+		env.fog_light_color = Color("0d0614")
+		env.fog_density = 0.035
+	amb_color = env.ambient_light_color
+	amb_energy = env.ambient_light_energy
 	var we := WorldEnvironment.new()
 	world_env = we
 	we.environment = env
@@ -274,9 +292,13 @@ func _build_env() -> void:
 	sun.shadow_enabled = true
 	sun.rotation_degrees = Vector3(-55, 35, 0)
 	add_child(sun)
-	# fond marin : plancher océanique, roches et neige marine hors de la station
 	var w := battle.grid.w
 	var h := battle.grid.h
+	if AbyssKit.theme != "station":
+		sun.light_color = Color("9fb6d6") if AbyssKit.theme == "port" else Color("b9a6d6")
+		_surroundings(w, h)
+		return
+	# fond marin : plancher océanique, roches et neige marine hors de la station
 	var sea := _box(self, Vector3(80, 0.2, 80), Vector3(w / 2.0, -3.2, h / 2.0), _mat("seabed", Color("08131d"), 0, 1))
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var rock := _mat("rock", Color("0e1a26"), 0.1, 0.9)
@@ -301,6 +323,118 @@ func _build_env() -> void:
 	snow.initial_velocity_max = 0.3
 	snow.position = Vector3(w / 2.0, 6, h / 2.0)
 	add_child(snow)
+
+## Abords des cartes de campagne (purement décoratifs) : quais, mer, conteneurs, grue et pluie au Port ;
+## sol rocheux, stalagmites, cristaux et spores au Nid.
+func _surroundings(w: int, h: int) -> void:
+	var K := AbyssKit
+	if K.theme == "port":
+		var sea := _box(self, Vector3(90, 0.1, 50), Vector3(w / 2.0, -0.22, -24), K.mat("sea"))
+		sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var deep := _box(self, Vector3(90, 0.1, 50), Vector3(w / 2.0, -2.0, -24), _mat("seafloor", Color("03080c"), 0, 1))
+		deep.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var apron := _box(self, Vector3(90, 0.3, 46), Vector3(w / 2.0, -0.16, 23.0), K.mat("asphalt"))
+		apron.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# piles de conteneurs hors carte (silhouettes colorées)
+		var cols := ["cont_red", "cont_blue", "cont_teal", "cont_ochre"]
+		var spots := [Vector3(-3.4, 0, 6.5), Vector3(-3.4, 0, 10.5), Vector3(-7, 0, 8.5), Vector3(w + 3.2, 0, 6), Vector3(w + 3.2, 0, 9.5),
+			Vector3(w + 3.2, 0, 13), Vector3(w + 9.6, 0, 9.5), Vector3(4, 0, h + 2.6), Vector3(10.5, 0, h + 2.6), Vector3(13, 0, h + 6)]
+		for i in spots.size():
+			var stack := 1 + (i * 7) % 3
+			for k in stack:
+				var key: String = cols[(i + k * 3) % cols.size()]
+				var yaw := 0.04 * (k - 1)
+				var ct := K.spawn("container_" + key, _container.bind(key), self, spots[i] + Vector3(0.1 * (k % 2), k * 2.42, 0), yaw)
+				_outer(ct, spots[i], w, h)
+		_outer(K.spawn("crane", _crane, self, Vector3(-2.6, 0, 1.0), 0.0), Vector3(-2.6, 0, 1.0), w, h)
+		# pluie oblique
+		snow = CPUParticles3D.new()
+		var q := QuadMesh.new(); q.size = Vector2(0.012, 0.35)
+		snow.mesh = q
+		var rm := _mat("rain", Color(0.7, 0.8, 0.9), 0, 1, Color(0.35, 0.45, 0.55), 0.35)
+		rm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+		snow.material_override = rm
+		snow.amount = 260
+		snow.lifetime = 0.9
+		snow.preprocess = 1.0
+		snow.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		snow.emission_box_extents = Vector3(12, 0.5, 12)
+		snow.direction = Vector3(0.15, -1, 0.05)
+		snow.spread = 2.0
+		snow.gravity = Vector3(0, -4, 0)
+		snow.initial_velocity_min = 7.0
+		snow.initial_velocity_max = 9.0
+		snow.position = Vector3(w / 2.0, 7, h / 2.0)
+	else:
+		var ground := _box(self, Vector3(80, 0.3, 80), Vector3(w / 2.0, -0.17, h / 2.0), K.mat("rock_floor"))
+		ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# stalagmites et cristaux violets tout autour
+		for i in 26:
+			var a := i * TAU / 26.0 + 0.11 * (i % 3)
+			var r := 10.0 + (i % 5) * 1.4
+			var at := Vector3(w / 2.0 + cos(a) * r * 1.05, 0, h / 2.0 + sin(a) * r)
+			var c := CylinderMesh.new()
+			c.top_radius = 0.05 + 0.15 * (i % 2); c.bottom_radius = 0.8 + 0.35 * (i % 4); c.height = 2.5 + (i * 13) % 6
+			c.radial_segments = 6; c.rings = 1
+			var st := _mesh(self, c, at + Vector3(0, c.height / 2.0 - 0.1, 0), K.mat("rock"))
+			st.rotation = Vector3(0.08 * ((i % 3) - 1), i * 0.9, 0.06 * ((i % 4) - 1.5))
+			_outer(st, at, w, h)
+			if i % 3 == 0:
+				for k in 3:
+					var pm := PrismMesh.new(); pm.size = Vector3(0.22, 0.6 + 0.25 * k, 0.22)
+					var cr := _mesh(self, pm, at + Vector3(0.7 * cos(a + k), 0.3, 0.7 * sin(a + k)) - Vector3(cos(a), 0, sin(a)) * 0.9, K.mat("led_violet"))
+					cr.rotation = Vector3(0.3 * (k - 1), k, 0.25 * (1 - k))
+					_outer(cr, at, w, h)
+		# spores qui montent lentement
+		snow = CPUParticles3D.new()
+		var sm := SphereMesh.new(); sm.radius = 0.025; sm.height = 0.05; sm.radial_segments = 4; sm.rings = 2
+		snow.mesh = sm
+		snow.material_override = _mat("spore", Color("c9a6ff"), 0, 1, Color("8a4cff"), 0.7)
+		snow.amount = 80
+		snow.lifetime = 12.0
+		snow.preprocess = 12.0
+		snow.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		snow.emission_box_extents = Vector3(10, 0.5, 9)
+		snow.direction = Vector3(0, 1, 0)
+		snow.spread = 25.0
+		snow.gravity = Vector3(0, 0.02, 0)
+		snow.initial_velocity_min = 0.08
+		snow.initial_velocity_max = 0.2
+		snow.position = Vector3(w / 2.0, 0.2, h / 2.0)
+	snow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(snow)
+
+## Objet haut hors de la carte : masqué quand il se trouve entre la caméra et le terrain (comme la coque abaissée).
+func _outer(n: Node3D, at: Vector3, w: int, h: int) -> void:
+	var d := Vector3(at.x - w / 2.0, 0, at.z - h / 2.0)
+	var n2 := Vector3(signf(d.x) if absf(d.x) > w / 2.0 else 0.0, 0, signf(d.z) if absf(d.z) > h / 2.0 else 0.0)
+	dressing.decor.append([n, n2.normalized() if n2.length() > 0 else d.normalized()])
+
+## Conteneur maritime 6 m (KIT-005) : caisson ondulé, montants d'angle.
+func _container(col: String) -> AbyssKit.Piece:
+	var p := AbyssKit.Piece.new()
+	p.box(Vector3(5.9, 2.4, 2.3), Vector3(0, 1.2, 0), col, 0.03)
+	for i in 23:
+		p.box(Vector3(0.07, 2.3, 2.36), Vector3(-2.75 + i * 0.25, 1.2, 0), col, 0.01)
+	for sx in [-2.93, 2.93]:
+		p.box(Vector3(0.1, 2.44, 2.38), Vector3(sx, 1.22, 0), "dark", 0.01)
+	return p
+
+## Grue portuaire (portique) au bord du bassin, flèche au-dessus de l'eau, feu rouge au sommet.
+func _crane() -> AbyssKit.Piece:
+	var p := AbyssKit.Piece.new()
+	for sz in [-1.2, 1.2]:
+		for sx in [-0.9, 0.9]:
+			p.box(Vector3(0.25, 7.0, 0.25), Vector3(sx, 3.5, sz), "cont_ochre", 0.03)
+		p.box(Vector3(2.1, 0.25, 0.3), Vector3(0, 6.9, sz), "cont_ochre", 0.03)
+		p.box(Vector3(2.1, 0.2, 0.25), Vector3(0, 3.2, sz), "cont_ochre", 0.03)
+	p.box(Vector3(1.4, 1.0, 2.8), Vector3(0, 7.5, 0), "cont_ochre", 0.05) # cabine
+	p.box(Vector3(0.6, 0.4, 0.05), Vector3(0.3, 7.5, 1.42), "led_amber", 0.0)
+	p.box(Vector3(14.0, 0.35, 0.5), Vector3(5.0, 7.4, 0), "cont_ochre", 0.03) # flèche au-dessus du bassin
+	p.pipe(Vector3(9.0, 7.2, 0), Vector3(9.0, 4.2, 0), 0.02, "steel") # câble
+	p.box(Vector3(0.5, 0.25, 0.5), Vector3(9.0, 4.1, 0), "dark", 0.02)
+	p.box(Vector3(0.15, 0.15, 0.15), Vector3(-1.5, 8.1, 0), "led_red", 0.0)
+	return p
 
 func _bat(b: Dictionary, key: String, t: Transform3D) -> void:
 	if not b.has(key):
@@ -327,11 +461,11 @@ func _build_map() -> void:
 				var n := Vector3(-1 if x == 0 else (1 if x == g.w - 1 else 0), 0, -1 if y == 0 else (1 if y == g.h - 1 else 0))
 				var hk := "hull_w" if win else "hull"
 				_bat(batch, hk, Transform3D(Basis(Vector3.UP, atan2(n.x, n.z)), hn.position))
-				if win and (x + y) % 2 == 0:
+				if win and (x + y) % 2 == 0 and AbyssKit.theme == "station":
 					var beam := K.spawn("beam", K.light_beam, hn, Vector3.ZERO, atan2(-n.x, -n.z))
 					beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				# équipements fixés à la paroi intérieure : conduites (PROP-006), excroissances aliennes (KIT-009)
-				if not win and edge and (x * 5 + y) % 4 == 0 and n.length() == 1.0:
+				if not win and edge and (x * 5 + y) % 4 == 0 and n.length() == 1.0 and AbyssKit.theme == "station":
 					var pipe := K.prop("p006_s1", 0.42)
 					pipe.position = -n * 0.56 + Vector3(0, 1.75, 0)
 					hn.add_child(pipe)
@@ -380,7 +514,8 @@ func _build_map() -> void:
 					n.add_child(o)
 					n.set_meta("wreck", "k010_2")
 				else:
-					var cv: Array = K.COVERS[(x * 7 + y * 3) % K.COVERS.size()]
+					var cvs := K.covers()
+					var cv: Array = cvs[(x * 7 + y * 3) % cvs.size()]
 					n.add_child(K.prop(cv[0], cv[1]))
 					n.set_meta("wreck", cv[2])
 				wall_nodes[g.idx(p)] = n
@@ -537,10 +672,11 @@ func _update_cutaway() -> void:
 	back = back.normalized()
 	for hn in hull_nodes:
 		var low: bool = (hn[1] as Vector3).dot(back) > 0.3
-		(hn[0] as Node3D).scale = Vector3(1, 0.12 if low else 1.0, 1)
+		var cut := 0.45 if AbyssKit.theme == "port" else 0.12 # le quai est déjà bas : on garde le béton
+		(hn[0] as Node3D).scale = Vector3(1, cut if low else 1.0, 1)
 		var mm: MultiMesh = hull_mm[hn[2]]
 		var t := mm.get_instance_transform(hn[3])
-		t.basis = Basis(Vector3.UP, atan2((hn[1] as Vector3).x, (hn[1] as Vector3).z)).scaled(Vector3(1, 0.12 if low else 1.0, 1))
+		t.basis = Basis(Vector3.UP, atan2((hn[1] as Vector3).x, (hn[1] as Vector3).z)).scaled(Vector3(1, cut if low else 1.0, 1))
 		mm.set_instance_transform(hn[3], t)
 	dressing.update_cutaway(back)
 
@@ -574,8 +710,8 @@ func _apply_quality(q: String) -> void:
 	RenderingServer.directional_shadow_atlas_set_size(2048 if q == "haute" else 1024, true)
 	world_env.environment.glow_enabled = not lo
 	# allégée : les lampes coupées sont compensées par une ambiance et un soleil plus forts (gratuits)
-	world_env.environment.ambient_light_energy = 1.25 if lite else 0.55
-	world_env.environment.ambient_light_color = Color("2a3a48") if lite else Color("1e2a34")
+	world_env.environment.ambient_light_energy = amb_energy * 2.3 if lite else amb_energy
+	world_env.environment.ambient_light_color = amb_color.lightened(0.12) if lite else amb_color
 	sun.light_energy = 0.85 if lite else 0.4
 	snow.visible = not lo
 	for id in unit_nodes:
