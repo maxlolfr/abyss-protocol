@@ -22,8 +22,8 @@ games/abyss-protocol/
     engine.ts      TacticalEngine : commandes → événements, aperçus (coût, chance, couvert, UT restantes)
     save.ts        SaveManager versionné + migrations
   src/game/        RENDU Phaser 4.2.1 (lit l'état, rejoue les événements) + AudioManager
-  tests/           Vitest (local : shim node:test)
-  spikes/godot/    spike Godot 4.7.2 de l'étude moteurs
+  tests/           Vitest
+(dépôt abyss-protocol : ce projet est dans phaser/ ; le prototype 3D est dans godot/, voir docs/PROTOTYPE-GODOT.md)
 ```
 
 Principe : le rendu n'écrit jamais dans l'état ; il envoie des `Command` et rejoue les `GameEvent`. Même seed + mêmes commandes = même partie (testé). Les modules campagne (CampaignEngine, Geoscape, BaseManagement, ResearchSystem, Manufacturing, Inventory persistant) sont **reportés** à la phase 2 et suivront le même principe : un dossier `src/sim/<système>` pur et testé, plus un rendu séparé.
@@ -42,7 +42,11 @@ Principe : le rendu n'écrit jamais dans l'état ; il envoie des `Command` et re
 | 25/11 | Alerte locale : un alien ne converge que vers un bruit proche (≤ 11 cases), sauf après la pulsation de l'artefact. Évite la ruée générale dès le premier tir | Implémenté |
 | 25/11 | Décor destructible minimal : la grenade pulvérise les obstacles bas au contact (couvert perdu) | Implémenté, testé |
 | 25/11 | Moteur de rendu : Phaser 3.90 abandonné au profit de **Phaser 4.2.1** (lumières `setLighting`, normal maps, filtres caméra) | Spike fait |
-| 25/11 | Étude moteurs : recommandation Phaser 4.2.1 (combat) + Babylon.js 9 (globe), Godot 4.7.2 en plan B | **En attente de Max** |
+| 25/11 | Étude moteurs : recommandation de Claude Phaser 4.2.1 (combat) + Babylon.js 9 (globe), Godot 4.7.2 en plan B | Remplacée ci-dessous |
+| 25/11 | **Max privilégie Godot + GDScript en vraie 3D** (qualité et ambition à long terme), sous réserve de validation technique ; le prototype TypeScript est conservé comme référence | Décision de Max |
+| 25/11 | Dépôt public dédié `maxlolfr/abyss-protocol` (Game-studio-ai reste privé) ; les deux prototypes y sont publiés côte à côte sur GitHub Pages | Implémenté |
+| 25/11 | Prototype Godot 4.7.2 : simulation GDScript sans nœuds (`godot/sim`), 2 niveaux, tir plongeant, cloisons destructibles (harpon « Brèche », grenade), caméra orthographique rotative, ombres dynamiques désactivables | Implémenté, 22 tests |
+| 25/11 | Choix définitif du moteur **après essai des deux prototypes** sur Honor Magic V5, iPhone 15 Pro Max et iPad | **En attente de Max** |
 
 ## Équilibrage (mesuré par simulation IA contre IA, 40 parties)
 Escouade pilotée par une IA simple (sans genou, surveillance, grenade ni soin) : 47,5 % de victoires, 2,8 soldats perdus en moyenne, 11 tours. Un joueur humain devrait faire mieux. À réévaluer après les tests de Max.
