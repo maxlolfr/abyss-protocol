@@ -24,5 +24,5 @@ func _initialize() -> void:
 		draws += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 		objs += Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
 		prims += Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
-	print("PERF appels=%d objets=%d primitives=%d lumières=%d" % [draws / 10, objs / 10, prims / 10, main.find_children("*", "Light3D", true, false).size()])
+	print("PERF appels=%d objets=%d primitives=%d lumières=%d" % [draws / 10, objs / 10, prims / 10, main.find_children("*", "Light3D", true, false).filter(func(l): return l.is_visible_in_tree()).size()])
 	quit()

@@ -20,6 +20,7 @@ var emergency: Array[OmniLight3D] = []
 var beacons: Array[Node3D] = []
 var ambient_fx: Array[Node] = []
 var spark_at := Vector3.ZERO
+var alarm_on := false
 var _t := 0.0
 var _next_spark := 3.0
 
@@ -131,8 +132,11 @@ func _lights(nem: bool) -> void:
 
 ## Alarme rouge tournante pendant l'extraction (déclenchée par l'événement « alarm »).
 func set_alarm(on: bool) -> void:
+	alarm_on = on
 	for i in emergency.size():
 		var r := emergency[i]
+		if main.quality == "allégée":
+			r.visible = on # éteinte, une lumière coûte quand même en allégée
 		beacons[i].visible = on
 		if on:
 			var tw := create_tween().set_loops()
@@ -218,10 +222,13 @@ func _particles(nem: bool, steam_spots: Array[Vector3]) -> void:
 	spark_at = Vector3(13.5, 0.85, 12.3)
 
 func set_quality(q: String) -> void:
+	var lo := q in ["basse", "allégée"]
 	for f in ambient_fx:
 		if f is CPUParticles3D:
-			(f as CPUParticles3D).emitting = q != "basse"
-			(f as CPUParticles3D).visible = q != "basse"
+			(f as CPUParticles3D).emitting = not lo
+			(f as CPUParticles3D).visible = not lo
+	for r in emergency:
+		r.set_meta("key", true) # l'alarme reste visible en qualité allégée
 
 func _process(delta: float) -> void:
 	_t += delta
@@ -229,7 +236,7 @@ func _process(delta: float) -> void:
 		if f is OmniLight3D and f.has_meta("flicker"):
 			var o := f as OmniLight3D
 			o.light_energy = 1.1 if fmod(_t * 7.3, 5.0) > 0.35 and fmod(_t * 2.1, 9.0) > 0.5 else randf_range(0.05, 0.4)
-	if spark_at != Vector3.ZERO and _t > _next_spark and main.quality != "basse":
+	if spark_at != Vector3.ZERO and _t > _next_spark and not (main.quality in ["basse", "allégée"]):
 		_next_spark = _t + randf_range(2.5, 6.0)
 		AbyssFx.burst(self, spark_at, "spark", Color(1.0, 0.8, 0.45), 10, 3.0, 0.45, 0.22, true, Vector3(0, -9.8, 0), 1.0, 60.0, Vector3.UP, true)
 		AbyssFx.flash(self, spark_at, Color(1.0, 0.85, 0.6), 0.5, 0.08)

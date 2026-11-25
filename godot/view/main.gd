@@ -34,6 +34,10 @@ var fog_quads := {}
 var world_env: WorldEnvironment
 var snow: CPUParticles3D
 var quality := "haute"
+const QUALITIES := ["haute", "moyenne", "basse", "allégée"]
+var mobile := false
+var _auto_quality := false # sur téléphone : baisse automatique si les i/s restent faibles
+var _slow_t := 0.0
 var hull_mm := {} # coque en MultiMesh : la coupe côté caméra modifie les instances
 var fog_layers: Array[MultiMesh] = [] # [inconnu, mémorisé]
 var overlay := Node3D.new()
@@ -88,8 +92,10 @@ func _ready() -> void:
 	_update_cutaway()
 	if battle.units.any(func(u): return u.carrying):
 		dressing.set_alarm(true) # partie reprise pendant l'extraction
-	var mobile := OS.has_feature("web_android") or OS.has_feature("web_ios") or OS.has_feature("mobile")
-	_apply_quality(_query("q") if _query("q") in ["haute", "moyenne", "basse"] else ("moyenne" if mobile else "haute"))
+	mobile = OS.has_feature("web_android") or OS.has_feature("web_ios") or OS.has_feature("mobile")
+	var qq := _query("q").replace("allegee", "allégée")
+	_apply_quality(qq if qq in QUALITIES else ("moyenne" if mobile else "haute"))
+	_auto_quality = mobile and not (qq in QUALITIES)
 	hud.set_quality(quality)
 	var resumed := battle.turn > 1 or battle.living(true).any(func(u): return u.tu < u.max_tu)
 	if resumed:
@@ -405,6 +411,7 @@ func _build_props() -> void:
 	var hm := _mesh(artifact_node, halo, Vector3(0, 0.82, 0), AbyssKit.mat("led_cyan"))
 	hm.rotation_degrees.x = 70
 	var al := OmniLight3D.new(); al.light_color = Color("39d9ef"); al.omni_range = 4.5; al.light_energy = 2.4; al.position = Vector3(0, 1.0, 0)
+	al.set_meta("key", true) # gardée en qualité allégée
 	artifact_node.add_child(al)
 	var spin := create_tween().set_loops()
 	spin.tween_property(top, "rotation_degrees:y", 360.0, 4.0).from(0.0)
@@ -503,6 +510,7 @@ func _on_setting(key: String, v: Variant) -> void:
 		"shadows":
 			sun.shadow_enabled = v
 		"quality":
+			_auto_quality = false # choix manuel : plus de réglage automatique
 			_apply_quality(v)
 		"sound": audio.set_enabled(v)
 		"vol_Music", "vol_SFX", "vol_Ambience":
@@ -513,17 +521,51 @@ func _on_setting(key: String, v: Variant) -> void:
 ## (les écrans mobiles sont à 3x) ; Basse : 45 %, sans ombres, sans halo, sans lampes frontales ni neige marine.
 func _apply_quality(q: String) -> void:
 	quality = q
+	var lo := q in ["basse", "allégée"]
+	var lite := q == "allégée"
 	dressing.set_quality(q)
 	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
-	get_viewport().scaling_3d_scale = {"haute": 1.0, "moyenne": 0.65, "basse": 0.45}[q]
-	sun.shadow_enabled = q != "basse"
+	get_viewport().scaling_3d_scale = {"haute": 1.0, "moyenne": 0.65, "basse": 0.45, "allégée": 0.5}[q]
+	# allégée : sans anticrénelage (rendu un peu plus net que « basse » mais bien moins coûteux), 30 i/s plafonnés
+	get_viewport().msaa_3d = Viewport.MSAA_DISABLED if lite else Viewport.MSAA_2X
+	Engine.max_fps = 30 if lite else 0
+	sun.shadow_enabled = not lo
 	RenderingServer.directional_shadow_atlas_set_size(2048 if q == "haute" else 1024, true)
-	world_env.environment.glow_enabled = q != "basse"
-	snow.visible = q != "basse"
+	world_env.environment.glow_enabled = not lo
+	# allégée : les lampes coupées sont compensées par une ambiance et un soleil plus forts (gratuits)
+	world_env.environment.ambient_light_energy = 1.25 if lite else 0.55
+	world_env.environment.ambient_light_color = Color("2a3a48") if lite else Color("1e2a34")
+	sun.light_energy = 0.85 if lite else 0.4
+	snow.visible = not lo
 	for id in unit_nodes:
 		var lamp: Node = unit_nodes[id].find_child("Lamp", true, false)
 		if lamp:
-			lamp.visible = q != "basse"
+			lamp.visible = q != "basse" # gardées en allégée : sans elles les soldats se lisent mal
+		# allégée : sprites des unités non éclairés (moins de calcul, lisibles malgré les lampes coupées)
+		for sp in unit_nodes[id].find_children("*", "Sprite3D", true, false):
+			if not sp.has_meta("unlit"):
+				sp.set_meta("unlit", not sp.shaded)
+			sp.shaded = not lite and not sp.get_meta("unlit")
+	# allégée : seules les lumières clés (artefact, alarme) restent ; les « flaques » peintes au sol gardent l'ambiance.
+	# Dans le moteur de compatibilité (WebGL), chaque lumière ajoute des passes de rendu sur les objets qu'elle touche.
+	for o in find_children("*", "OmniLight3D", true, false):
+		if not o.has_meta("fx"):
+			o.visible = not lite or o.has_meta("key")
+	if lite and not dressing.alarm_on:
+		for r in dressing.emergency:
+			r.visible = false
+
+## Téléphone : si les i/s restent sous 24 pendant 5 s, la qualité descend d'un cran (jusqu'à « allégée »).
+func _watch_fps(delta: float) -> void:
+	if not _auto_quality or quality == "allégée":
+		return
+	_slow_t = _slow_t + delta if Engine.get_frames_per_second() < 24 else 0.0
+	if _slow_t > 5.0:
+		_slow_t = 0.0
+		var nq: String = QUALITIES[QUALITIES.find(quality) + 1]
+		_apply_quality(nq)
+		hud.set_quality(nq)
+		hud.flash("Image saccadée : qualité %s" % nq, AbyssHud.CYAN)
 
 # ---------- entrées tactiles ----------
 
@@ -606,8 +648,10 @@ func _tap(pos: Vector2) -> void:
 		var label := "Tir précis" if m == "aimed" else "Tir rapide"
 		if info["error"] != "":
 			hud.set_preview("%s : %s" % [label, info["error"]], false)
+			hud.show_foe(u)
 			return
 		pending = {"cell": c, "cmd": {"type": "shoot", "unit": selected.id, "target": u.id, "mode": m}}
+		hud.show_foe(u, info["chance"])
 		var hc: Color = Color("52c99a") if info["chance"] >= 50 else (AbyssHud.AMBER if info["chance"] >= 25 else AbyssHud.RED)
 		_dest_marker(u.cell, "%d %%" % info["chance"], hc, "%d UT" % info["cost"])
 		hud.set_preview("%s · %d UT · %d %% · couvert %s · reste %d UT" % [label, info["cost"], info["chance"], ["aucun", "partiel", "total"][info["cover"]], selected.tu - info["cost"]], true)
@@ -718,20 +762,38 @@ func _show_reach() -> void:
 	var edge_x := BoxMesh.new(); edge_x.size = Vector3(0.96, 0.008, 0.02)
 	var edge_z := BoxMesh.new(); edge_z.size = Vector3(0.02, 0.008, 0.96)
 	var g := battle.grid
+	# regroupé par matériau (MultiMesh) : 6 appels de rendu au lieu d'un par case et par bord (≈ 250)
+	var groups := {}
 	for k in zone:
 		var p := Vector2i(k % g.w, k / g.w)
 		var ok: bool = zone[k] == 2
 		var col := Color("39d9ef") if ok else Color("ffb547")
-		var fill := _mesh(overlay, tile, _cell_pos(p) + Vector3(0, 0.012, 0), _mat("reachFill%s" % ok, col, 0, 1, Color.BLACK, 0.045))
-		fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var key := "fill%s" % ok
+		if not groups.has(key):
+			groups[key] = [tile, _mat("reachFill%s" % ok, col, 0, 1, Color.BLACK, 0.045), []]
+		groups[key][2].append(_cell_pos(p) + Vector3(0, 0.012, 0))
 		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var q: Vector2i = p + d
 			if zone.get(g.idx(q) if g.inside(q) else -1, 0) >= zone[k]:
 				continue
 			if not g.inside(q) or g.tile(q) in [AbyssGrid.T.HULL, AbyssGrid.T.WALL, AbyssGrid.T.LOW]:
 				continue # le bord d'un mur ou d'un couvert se lit déjà dans le décor
-			var e := _mesh(overlay, edge_z if d.x else edge_x, _cell_pos(p) + Vector3(d.x * 0.47, 0.02, d.y * 0.47), _mat("reachEdge%s" % ok, col, 0, 1, col * 0.25, 0.55))
-			e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var ek := "edge%s%s" % [ok, d.x != 0]
+			if not groups.has(ek):
+				groups[ek] = [edge_z if d.x else edge_x, _mat("reachEdge%s" % ok, col, 0, 1, col * 0.25, 0.55), []]
+			groups[ek][2].append(_cell_pos(p) + Vector3(d.x * 0.47, 0.02, d.y * 0.47))
+	for key in groups:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = groups[key][0]
+		mm.instance_count = groups[key][2].size()
+		for i in mm.instance_count:
+			mm.set_instance_transform(i, Transform3D(Basis(), groups[key][2][i]))
+		var mi := MultiMeshInstance3D.new()
+		mi.multimesh = mm
+		mi.material_override = groups[key][1]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		overlay.add_child(mi)
 
 ## Destination ou cible : coins de visée fins (UI-114) + étiquette lisible (coût UT, % de toucher).
 func _dest_marker(c: Vector2i, text: String, col: Color, sub := "") -> void:
@@ -802,6 +864,7 @@ func _visible(u: AbyssUnit) -> bool:
 ## Cloisons et couverts qui cachent une unité (entre elle et la caméra) : rendus translucides.
 ## Récit de mission : messages à la découverte de la contamination (vue seulement, la simulation n'est pas touchée).
 func _process(delta: float) -> void:
+	_watch_fps(delta)
 	_occl_t += delta
 	if _occl_t < 0.2:
 		return
@@ -929,7 +992,10 @@ func _float(at: Vector3, text: String, col: Color) -> void:
 	tw.tween_callback(l.queue_free)
 
 func _flash_light(at: Vector3, col: Color, rng: float, energy: float, dur: float) -> void:
+	if quality == "allégée":
+		return
 	var o := OmniLight3D.new()
+	o.set_meta("fx", true)
 	o.light_color = col
 	o.omni_range = rng
 	o.light_energy = energy
@@ -1048,15 +1114,14 @@ func _play(events: Array) -> void:
 				if not _story.has("contact_" + u.kind) and speed <= 1.0:
 					# présentation de la créature au premier contact (zoom court, fiche, retour)
 					_story["contact_" + u.kind] = true
-					var desc: String = {"nereide": "NÉRÉIDE · éclaireuse amphibie, rapide, attaque de flanc",
-						"carapace": "CARAPACE · crustacé lourd blindé, jet d'acide à courte portée",
-						"spectre": "SPECTRE · entité psionique, ignore les couverts, désoriente"}.get(u.kind, u.name)
 					var keep := cam.size
 					var tw := create_tween().set_parallel()
 					tw.tween_property(pivot, "position", Vector3(u.cell.x + 0.5, 0, u.cell.y + 0.5), 0.35).set_trans(Tween.TRANS_SINE)
 					tw.tween_property(cam, "size", 4.2, 0.35).set_trans(Tween.TRANS_SINE)
-					hud.flash(desc, AbyssHud.RED)
-					await get_tree().create_timer(1.4).timeout
+					hud.flash("Nouvelle espèce : %s" % u.name, AbyssHud.RED)
+					hud.show_foe(u)
+					await get_tree().create_timer(1.6).timeout
+					hud.hide_foe()
 					create_tween().tween_property(cam, "size", keep, 0.4).set_trans(Tween.TRANS_SINE)
 				if battle.side != "human":
 					create_tween().tween_property(pivot, "position", Vector3(u.cell.x + 0.5, 0, u.cell.y + 0.5), 0.3 / speed)
@@ -1202,7 +1267,7 @@ func _play(events: Array) -> void:
 				_build_unit(su)
 				var sn: Node3D = unit_nodes[su.id]
 				sn.visible = e["seen"]
-				hud.flash("Mouvement dans le bassin ouest : renfort hostile !", AbyssHud.RED)
+				hud.flash("Mouvement dans le bassin %s : renfort hostile !" % ("ouest" if e.get("side", "west") == "west" else "est"), AbyssHud.RED)
 				audio.sfx("nereid_alert", null, -4.0, 0.85)
 				AbyssFx.burst(self, _cell_pos(su.cell) + Vector3(0, 0.2, 0), "splat", Color(0.5, 0.75, 0.9, 0.8), 18, 3.0, 0.7, 0.25, true, Vector3(0, -7, 0))
 			"logs":

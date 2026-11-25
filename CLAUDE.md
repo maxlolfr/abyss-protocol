@@ -18,13 +18,14 @@ Vision : `docs/MASTER_GDD.md`, `docs/ART_DIRECTION.md`, `docs/CLAUDE_START.md`. 
 ## Mission Némésis (en cours depuis le 25/11, 11 h)
 Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA V3.1, autonomie technique, pas de campagne avant validation, dépôt studio jamais public. Journal et décisions : `docs/NEMESIS.md`. Images rangées : PR #25 du studio (63 références, aucun personnage).
 
-## Reprise (fenêtre suivante) — état au 25/11 18 h
-- PR ouvertes, **non fusionnées** (validation de Max/ChatGPT) : #5 (refonte V1 + son) et la PR de phase 2 (branche `claude-b/phase2`, contient #5). Studio : PR #27 (audio, créatures, interface HD).
-- Ressources toutes reçues et rangées (zips renvoyés à 17 h 31 = doublons sauf PROP-001 à 004). Planches à demander : `docs/PLANCHES-MANQUANTES.md`.
+## Reprise (fenêtre suivante) — état au 25/11 18 h 45
+- Fusionnées par Max à 17 h 49 : #5 (refonte V1 + son), #6 (phase 2). Studio : #27.
+- En cours : branche `claude-b/phase2-finitions` (PR à valider, **ne pas fusionner sans Max**) : équilibrage Némésis (65 %), interface (cartes, fiche ennemi, débriefing), profil « allégée » + baisse automatique. Détails : `docs/NEMESIS.md`.
+- Planches attendues : `docs/PLANCHES-MANQUANTES.md` (poses des soldats, Carapace, lot 2 des sons).
 - Format de réponse demandé par Max : barre 🟩⬜ + % + coût estimé en tokens + temps estimé, à chaque message ; prévenir quand la fenêtre devient trop longue.
-- Outils locaux : Godot 4.7.2 dans /home/claude/bin (à retélécharger), captures `tests/shot.gd`, `tests/fxshot.gd`, `tests/lineup.gd`, partie auto `tests/play_smoke.gd`.
+- Outils locaux : Godot 4.7.2 à retélécharger dans /home/claude/bin (marche). Tests `tests/run_tests.gd` (42), équilibre `tests/balance.gd -- 80`, coût de rendu `tests/perf.gd -- <qualité>`, captures `tests/shot.gd` (5e argument = qualité), `tests/ui_shot.gd`, `tests/screens_shot.gd`, partie auto `tests/play_smoke.gd`.
 
 ## Prochaines étapes probables
 1. Suite de `docs/NEMESIS.md` : N1 à N4 faits (N4 = refonte visuelle avec les sprites des planches de Max, interface, performance). Inventaire des ressources : `Game-studio-ai/docs/studio/art/abyss-protocol/ASSET_INVENTORY.md`. Max a autorisé (25/11 15 h 36) la publication des versions allégées de ses créations dans le jeu public, jamais les originaux, zips, planches complètes ni prompts.
-2. Équilibrage Godot (l'escouade gagne trop en IA contre IA), Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).
+2. Mesures d'i/s de Max (haute / moyenne / allégée) ; Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).
 3. Intégrer les références visuelles de ChatGPT/Gemini quand elles seront dans le studio ; vrais modèles via `godot/view/unit_visuals.gd` (`res://assets/units/<kind>.tscn`).

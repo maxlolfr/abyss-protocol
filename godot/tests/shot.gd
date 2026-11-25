@@ -1,5 +1,5 @@
 extends SceneTree
-## Capture d'écran hors ligne : xvfb-run godot --path . -s res://tests/shot.gd -- out.png [yaw_steps] [zoom] [x,y = tout révéler]
+## Capture d'écran hors ligne : xvfb-run godot --path . -s res://tests/shot.gd -- out.png [yaw_steps] [zoom] [x,y = tout révéler] [qualité]
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out: String = args[0] if args.size() > 0 else "/tmp/shot.png"
@@ -9,6 +9,8 @@ func _initialize() -> void:
 	root.add_child(main)
 	for i in 30:
 		await process_frame
+	if args.size() > 4:
+		main._apply_quality(args[4])
 	if args.size() > 1 and int(args[1]) != 0:
 		main._rotate(int(args[1]))
 	if args.size() > 2:
