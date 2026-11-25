@@ -185,7 +185,30 @@ def screen():
     save("screen", col + em * 0.3, np.zeros((N, N)), np.full((N, N), 0.15), emission=em)
 
 
+def flesh():
+    """Peau alienne neutre (teintée par matériau) : écailles fines, veines, aspect humide."""
+    n = noise(10, 5)
+    cells = noise(48, 2)
+    scales = np.clip(np.abs(cells - 0.5) * 6, 0, 1)
+    veins = np.clip(1 - np.abs(noise(5, 4) - 0.5) * 18, 0, 1) + np.clip(1 - np.abs(noise(9, 3) - 0.5) * 22, 0, 1) * 0.6
+    col = np.ones((N, N, 3)) * (0.62 + 0.25 * n[..., None]) * (0.9 + 0.1 * scales[..., None])
+    col = col * (1 - np.clip(veins, 0, 1)[..., None] * 0.45)
+    save("flesh", col, scales * 0.4 + veins * 0.5 + n * 0.2, 0.25 + 0.35 * noise(20, 3), strength=5)
+
+
+def fabric():
+    """Combinaison de plongée : néoprène renforcé (trame croisée) + coutures."""
+    u, v = xx * 64, yy * 64
+    weave = 0.5 + 0.25 * np.sin(u * 2 * np.pi) * np.sin(v * 2 * np.pi)
+    seam = (np.abs(((xx * 2) % 1) - 0.5) < 0.006) | (np.abs(((yy * 3) % 1) - 0.5) < 0.006)
+    n = noise(14, 4)
+    col = hexcol("2a3b4a") * (0.85 + 0.2 * n[..., None]) * (0.92 + 0.12 * weave[..., None])
+    col = col * (1 - seam[..., None] * 0.35)
+    col, d = grime(col, hexcol("1a1a18"), 0.3, streak=False)
+    save("fabric", col, weave * 0.3 - seam * 0.4, 0.7 + 0.15 * d, strength=4)
+
+
 if __name__ == "__main__":
-    for f in (metal_plate, hull, floor, grate, hazard, crate, screen):
+    for f in (metal_plate, hull, floor, grate, hazard, crate, screen, flesh, fabric):
         f()
         print("ok", f.__name__)

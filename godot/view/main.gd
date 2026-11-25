@@ -317,18 +317,15 @@ func _build_unit(u: AbyssUnit) -> void:
 	if u.human:
 		var lamp := SpotLight3D.new()
 		lamp.name = "Lamp"
-		lamp.position = Vector3(0, 1.3, 0.2)
+		lamp.position = Vector3(0.15, 0.17, 0.09)
 		lamp.rotation_degrees = Vector3(-20, 180, 0)
 		lamp.spot_range = 7.0
 		lamp.spot_angle = 30.0
 		lamp.light_energy = 1.3
 		lamp.light_color = Color("d8f4ff")
 		lamp.shadow_enabled = true
-		body.add_child(lamp)
-	if u.kind == "spectre":
-		var tw := create_tween().set_loops()
-		tw.tween_property(body, "position:y", 0.15, 1.1).set_trans(Tween.TRANS_SINE)
-		tw.tween_property(body, "position:y", 0.0, 1.1).set_trans(Tween.TRANS_SINE)
+		var head: Node3D = body.find_child("Head", true, false)
+		(head if head else body).add_child(lamp)
 	var ring := TorusMesh.new(); ring.inner_radius = 0.36; ring.outer_radius = 0.42
 	var rm := _mesh(root, ring, Vector3(0, 0.03, 0), _mat("ring", Color("39d9ef"), 0, 1, Color("39d9ef")))
 	rm.name = "Ring"
@@ -618,10 +615,18 @@ func _sync() -> void:
 	for u in battle.units:
 		var n: Node3D = unit_nodes[u.id]
 		n.position = _cell_pos(u.cell)
-		n.visible = u.alive and not u.evacuated and _visible(u)
-		(n.get_node("Body") as Node3D).scale = Vector3(1, 0.78 if u.kneeling else 1.0, 1)
+		n.visible = (u.alive and _visible(u) or n.has_meta("corpse")) and not u.evacuated
+		var ap: AnimationPlayer = n.get_node_or_null("Body/Anim")
+		if ap and u.alive:
+			if u.kneeling and ap.has_animation("kneel") and ap.assigned_animation != "kneel":
+				ap.play("kneel", 0.15)
+			elif not u.kneeling and ap.assigned_animation == "kneel":
+				ap.play("idle", 0.2)
+		elif not ap:
+			(n.get_node("Body") as Node3D).scale = Vector3(1, 0.78 if u.kneeling else 1.0, 1)
 		n.rotation.y = atan2(float(u.facing.x), float(u.facing.y))
 		var lbl: Label3D = n.get_node("Hp")
+		lbl.visible = u.alive
 		lbl.text = "%d%s%s" % [u.hp, " veille" if u.watching else "", " ART" if u.carrying else ""]
 		lbl.modulate = Color("39d9ef") if u.human else Color("e5484d")
 	artifact_node.visible = battle.artifact.x >= 0 and battle.explored[battle.grid.idx(battle.artifact)] == 1
@@ -751,7 +756,22 @@ func _cine_out(size: float) -> void:
 	await get_tree().create_timer(0.25).timeout
 	create_tween().tween_property(cam, "size", size, 0.3).set_trans(Tween.TRANS_SINE)
 
+## Joue une animation du modèle articulé (fondu court) ; les animations ponctuelles reviennent au repos.
+func _anim(n: Node3D, name: String) -> bool:
+	var ap: AnimationPlayer = n.get_node_or_null("Body/Anim")
+	if not ap or not ap.has_animation(name):
+		return false
+	ap.speed_scale = speed
+	if ap.current_animation == name and ap.get_animation(name).loop_mode != Animation.LOOP_NONE:
+		return true
+	ap.play(name, 0.12)
+	if name in ["shoot", "hit"]:
+		ap.queue("idle")
+	return true
+
 func _walk_bob(n: Node3D, dur: float) -> void:
+	if _anim(n, "walk"):
+		return
 	var body: Node3D = n.get_node("Body")
 	var tw := create_tween()
 	tw.tween_property(body, "position:y", 0.06, dur / 2)
@@ -803,10 +823,11 @@ func _play(events: Array) -> void:
 				if cinematic:
 					await _cine_in(a, b)
 				# recul de l'arme, éclair, traceur, étincelles d'impact
-				var body: Node3D = n.get_node("Body")
-				var kick := create_tween()
-				kick.tween_property(body, "position:z", -0.08, 0.05)
-				kick.tween_property(body, "position:z", 0.0, 0.12)
+				if not _anim(n, "shoot"):
+					var body: Node3D = n.get_node("Body")
+					var kick := create_tween()
+					kick.tween_property(body, "position:z", -0.08, 0.05)
+					kick.tween_property(body, "position:z", 0.0, 0.12)
 				_flash_light(a, col, 4.0, 4.0, 0.2)
 				_sparks(a, col, 8, 2.0, 0.2)
 				var beam := _beam(a, b, col, self, 0.06 if e["weapon"] in ["harpoon", "psi"] else 0.035)
@@ -824,23 +845,30 @@ func _play(events: Array) -> void:
 				_float(_cell_pos(u.cell), "-%d%s" % [e["amount"], " blessé" if e["wounded"] else ""], Color("ff7b6b"))
 				if e["drained"] > 0:
 					hud.flash("%s désorienté : -%d UT au prochain tour" % [u.name, e["drained"]], Color("9863f5"))
-				var body: Node3D = n.get_node("Body")
-				var tw := create_tween()
-				tw.tween_property(body, "rotation_degrees:x", -14.0, 0.06)
-				tw.tween_property(body, "rotation_degrees:x", 0.0, 0.2)
+				if not _anim(n, "hit"):
+					var body: Node3D = n.get_node("Body")
+					var tw := create_tween()
+					tw.tween_property(body, "rotation_degrees:x", -14.0, 0.06)
+					tw.tween_property(body, "rotation_degrees:x", 0.0, 0.2)
 				_flash_light(_cell_pos(u.cell) + Vector3(0, 1, 0), Color("e5484d"), 2.5, 2.5, 0.25)
 				await _wait(0.2)
 			"death":
 				var n: Node3D = unit_nodes[e["unit"]]
 				var u := battle.unit(e["unit"])
 				hud.flash("%s %s" % [u.name, "est tombé" if u.human else "neutralisé"], AbyssHud.RED if u.human else AbyssHud.GREEN)
-				var tw := create_tween()
-				tw.tween_property(n, "rotation:z", 1.45, 0.45 / speed).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-				tw.tween_property(n, "position:y", n.position.y - 0.15, 0.2 / speed)
-				await tw.finished
-				_sparks(n.global_position + Vector3(0, 0.3, 0), Color("9863f5") if not u.human else Color("e5484d"), 10, 1.5, 0.6)
-				await _wait(0.3)
-				n.visible = false
+				if _anim(n, "death"):
+					n.set_meta("corpse", true) # le corps reste au sol
+					await _wait(0.7)
+					_sparks(n.global_position + Vector3(0, 0.3, 0), Color("9863f5") if not u.human else Color("e5484d"), 10, 1.5, 0.6)
+					await _wait(0.4)
+				else:
+					var tw := create_tween()
+					tw.tween_property(n, "rotation:z", 1.45, 0.45 / speed).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+					tw.tween_property(n, "position:y", n.position.y - 0.15, 0.2 / speed)
+					await tw.finished
+					_sparks(n.global_position + Vector3(0, 0.3, 0), Color("9863f5") if not u.human else Color("e5484d"), 10, 1.5, 0.6)
+					await _wait(0.3)
+					n.visible = false
 			"explosion":
 				var at := _cell_pos(e["at"])
 				_flash_light(at + Vector3(0, 1, 0), Color("ff8a3d"), 9.0, 9.0, 0.8)
@@ -894,6 +922,10 @@ func _play(events: Array) -> void:
 					var n: Node3D = unit_nodes[id]
 					create_tween().tween_property(n, "position:y", n.position.y + 3.0, 0.6)
 				await _wait(0.6)
+	for id in unit_nodes:
+		var ap: AnimationPlayer = unit_nodes[id].get_node_or_null("Body/Anim")
+		if ap and ap.current_animation == "walk":
+			ap.play("idle", 0.25)
 	_sync()
 
 ## Effondrement : le bloc se fragmente, les morceaux rebondissent et restent ; poussière brève.

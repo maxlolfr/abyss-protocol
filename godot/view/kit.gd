@@ -38,6 +38,8 @@ static func mat(key: String) -> Material:
 			m.roughness = 0.45
 			m.metallic = 0.0
 		"steel": _flat(m, Color("6d7c88"), 0.85, 0.3)
+		"armor": _flat(m, Color("5d6e7c"), 0.6, 0.38)
+		"armor_dark": _flat(m, Color("2c3946"), 0.55, 0.45)
 		"dark": _flat(m, Color("141c24"), 0.5, 0.6)
 		"rubber": _flat(m, Color("1a1d20"), 0.0, 0.85)
 		"brass": _flat(m, Color("a07a3c"), 0.9, 0.35)
@@ -88,6 +90,29 @@ static func mat(key: String) -> Material:
 			m.emission_enabled = true
 			m.emission = c
 			m.emission_energy_multiplier = 2.6
+	_mats[key] = m
+	return m
+
+## Matériau texturé teinté (peaux aliennes, combinaisons) : `tex` = flesh, fabric, plate…
+static func tinted(key: String, tex: String, tint: Color, metal := 0.1, emit := Color.BLACK, rim := 0.0) -> Material:
+	if _mats.has(key):
+		return _mats[key]
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = load(TEX % [tex, "albedo"])
+	m.albedo_color = tint
+	m.normal_enabled = true
+	m.normal_texture = load(TEX % [tex, "normal"])
+	m.roughness_texture = load(TEX % [tex, "rough"])
+	m.metallic = metal
+	m.normal_scale = 0.45
+	m.uv1_triplanar = true
+	m.uv1_scale = Vector3.ONE * (1.6 if tex == "flesh" else 2.0)
+	if emit != Color.BLACK:
+		m.emission_enabled = true
+		m.emission = emit
+	if rim > 0.0:
+		m.rim_enabled = true
+		m.rim = rim
 	_mats[key] = m
 	return m
 
