@@ -3,11 +3,12 @@ import { expect, test } from '@playwright/test';
 // Démo Phaser 4 « salle Némésis » : démarrer, sélectionner, déplacer au toucher (aperçu puis confirmation),
 // finir le tour, 0 erreur console. Canvas Retina : coordonnées CSS = pixels du canvas / pixelRatio.
 test('démo Némésis : commencer, sélectionner, déplacer, finir le tour', async ({ page }) => {
+  test.setTimeout(180_000); // rendu logiciel en CI (pas de GPU) : chaque image coûte cher
   const errors: string[] = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push(e.message));
 
-  await page.goto('/nemesis.html?seed=e2e');
+  await page.goto('/nemesis.html?seed=e2e&q=allegee');
   await page.getByRole('button', { name: 'Entrer dans la salle' }).click();
   await page.waitForFunction(() => !!window.__abyss?.scene?.sys.isActive(), null, { timeout: 30_000 });
   await page.waitForTimeout(1200);
@@ -49,7 +50,7 @@ test('démo Némésis : commencer, sélectionner, déplacer, finir le tour', asy
   await expect(page.locator('#speed')).toHaveText('Passer');
   await page.locator('[data-act=end]').click();
   await page.locator('[data-act=end]').click();
-  await page.waitForFunction(() => window.__abyss!.engine.state.turn >= 2 && !document.getElementById('hud')!.classList.contains('locked'), null, { timeout: 60_000 });
+  await page.waitForFunction(() => window.__abyss!.engine.state.turn >= 2 && !document.getElementById('hud')!.classList.contains('locked'), null, { timeout: 120_000 });
   await expect(page.locator('#obj')).toContainText('Tour 2');
 
   expect(errors).toEqual([]);
