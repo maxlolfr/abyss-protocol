@@ -28,6 +28,7 @@ const PIECES := {
 	"hull": ["mur_coque", "width", 1.0],
 	"hull_w": ["mur_hublot", "width", 1.0],
 	"hull_c": ["mur_angle", "width", 1.0],
+	"hull_x": ["mur_contamine", "width", 1.0],
 	"wall": ["cloison", "width", 1.0],
 	"stairs": ["escalier", "width", 1.0],
 	"rail": ["garde_corps", "width", 1.0],

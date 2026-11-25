@@ -462,6 +462,9 @@ func _build_map() -> void:
 				var n := Vector3(-1 if x == 0 else (1 if x == g.w - 1 else 0), 0, -1 if y == 0 else (1 if y == g.h - 1 else 0))
 				var corner := (x == 0 or x == g.w - 1) and (y == 0 or y == g.h - 1)
 				var hk := "hull_w" if win else ("hull_c" if corner else "hull") # angle : modèle « mur_angle » s'il est livré
+				var infected := not win and edge and battle.map_id == "nemesis" and x == 0 and y >= 5 and y <= 8
+				if infected:
+					hk = "hull_x" # paroi contaminée : modèle « mur_contamine » s'il est livré
 				_bat(batch, hk, Transform3D(Basis(Vector3.UP, atan2(n.x, n.z) - (PI / 4 if corner else 0.0)), hn.position))
 				if win and (x + y) % 2 == 0 and AbyssKit.theme == "station":
 					var beam := K.spawn("beam", K.light_beam, hn, Vector3.ZERO, atan2(-n.x, -n.z))
@@ -471,7 +474,7 @@ func _build_map() -> void:
 					var pipe := K.prop("p006_s1", 0.42)
 					pipe.position = -n * 0.56 + Vector3(0, 1.75, 0)
 					hn.add_child(pipe)
-				elif not win and edge and battle.map_id == "nemesis" and x == 0 and y >= 5 and y <= 8:
+				elif infected and ModelKit.piece("hull_x", K.theme).is_empty():
 					var growth := K.prop("k009_1", 1.1)
 					growth.position = -n * 0.55 + Vector3(0, 0.2, 0)
 					hn.add_child(growth)
@@ -529,7 +532,8 @@ func _build_map() -> void:
 				_track(p, n)
 	# sols, passerelles et bassins : un objet par type de dalle (MultiMesh)
 	var makers := {"floor": K.floor_tile.bind(false), "evac_edge": K.evac_edge, "deck_high": K.deck_high, "pool": K.pool,
-		"hull": K.hull.bind(false), "hull_c": K.hull.bind(false), "hull_w": K.hull.bind(true)}
+		"hull": K.hull.bind(false), "hull_c": K.hull.bind(false), "hull_w": K.hull.bind(true),
+		"hull_x": K.hull.bind(false)}
 	for key in batch:
 		var mmi := K.batch(self, key, makers[key], batch[key])
 		if key.begins_with("hull"):
