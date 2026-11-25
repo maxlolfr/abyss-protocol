@@ -1,0 +1,25 @@
+extends SceneTree
+## Capture d'écran hors ligne : xvfb-run godot --path . -s res://tests/shot.gd -- out.png [yaw_steps] [zoom] [x,y = tout révéler]
+func _initialize() -> void:
+	var args := OS.get_cmdline_user_args()
+	var out: String = args[0] if args.size() > 0 else "/tmp/shot.png"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://abyss_save.json"))
+	var main: Node = load("res://view/main.tscn").instantiate()
+	root.add_child(main)
+	for i in 30:
+		await process_frame
+	if args.size() > 1 and int(args[1]) != 0:
+		main._rotate(int(args[1]))
+	if args.size() > 2:
+		main.cam.size = float(args[2])
+	if args.size() > 3: # vue d'ensemble : tout révélé, caméra centrée sur la case x,y
+		main.battle.explored.fill(1)
+		main._sync()
+		for fq in main.fog_quads.values():
+			fq.visible = false
+		var xy: PackedStringArray = args[3].split(",")
+		main.pivot.position = Vector3(float(xy[0]), 0, float(xy[1]))
+	for i in 40:
+		await process_frame
+	root.get_viewport().get_texture().get_image().save_png(out)
+	quit()

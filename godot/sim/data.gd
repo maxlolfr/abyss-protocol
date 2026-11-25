@@ -73,3 +73,25 @@ const LAB := [
 	"X..c....C......X",
 	"XXXXXXXXXXXXXXXX",
 ]
+
+## Mission Némésis (référence ENV-007) : salle de confinement, cuve centrale (artefact D), mezzanines
+## symétriques reliées par deux escaliers, terminal sur la mezzanine est, bassins techniques à l'avant,
+## sas d'entrée au sud. Spectre sur la mezzanine ouest, Carapace près de la cuve, Néréide dans le bassin est.
+const NEMESIS := [
+	"XXXXXXXXXXXXXXXX",
+	"X=k=..cD.c..=T=X",
+	"X=P=....C...===X",
+	"X===..#..#..===X",
+	"X===.c.....c===X",
+	"X./..c....c../.X",
+	"X...c..##..c...X",
+	"X~~..........~NX",
+	"X~~..........~~X",
+	"X..c...#.#..c..X",
+	"X.....SES......X",
+	"X.....EEE......X",
+	"X.....SES......X",
+	"XXXXXXXXXXXXXXXX",
+]
+
+const MAPS := {"lab": LAB, "nemesis": NEMESIS}

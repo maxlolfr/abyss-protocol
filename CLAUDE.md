@@ -15,7 +15,10 @@ Vision : `docs/MASTER_GDD.md`, `docs/ART_DIRECTION.md`, `docs/CLAUDE_START.md`. 
 - Local (environnement Claude) : npm bloqué. Godot : télécharger `Godot_v4.7.2-stable_linux.x86_64.zip` + modèles d'export depuis les releases GitHub (marche). Phaser : récupérer `phaser@4.2.1` par Git (dépôt phaserjs/phaser, tag v4.2.1, dist/ + types/), bundler avec l'esbuild de `/opt/npm-tools`, tester avec la bibliothèque Playwright de `/opt/npm-tools` (args SwiftShader).
 - Règles : branche `claude-b/...` + PR ; simulation séparée du rendu ; aucune dépense ; demander avant toute génération ElevenLabs ; pas de production massive de contenu avant validation du plaisir de jeu.
 
+## Mission Némésis (en cours depuis le 25/11, 11 h)
+Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA V3.1, autonomie technique, pas de campagne avant validation, dépôt studio jamais public. Journal et décisions : `docs/NEMESIS.md`. Images rangées : PR #25 du studio (63 références, aucun personnage).
+
 ## Prochaines étapes probables
-1. Ranger et trier les images de Max dans le studio privé (`Game-studio-ai/docs/studio/art/abyss-protocol/`) ; dire lesquelles sont utilisables directement (textures, UI, portraits) et lesquelles servent de référence de modélisation 3D.
+1. Suite de `docs/NEMESIS.md` : N1 à N3 faits (PR #3) ; attendre les retours de Max sur téléphone, puis N4 (performance, équilibrage, destruction des props, Carapace).
 2. Équilibrage Godot (l'escouade gagne trop en IA contre IA), Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).
 3. Intégrer les références visuelles de ChatGPT/Gemini quand elles seront dans le studio ; vrais modèles via `godot/view/unit_visuals.gd` (`res://assets/units/<kind>.tscn`).
