@@ -25,6 +25,7 @@ var toasts: VBoxContainer
 var modal: Control
 var speed := 0
 var tab := "monde"
+var audio := AbyssAudio.new()
 var sel := {} # {"kind": "base"|"craft"|"contact"|"site"|"point", "id": ..., "pos": ...}
 var _acc := 0.0
 var _markers := {}
@@ -35,6 +36,8 @@ var title_shown := false
 var show_title := true # désactivé par les captures
 
 func _ready() -> void:
+	add_child(audio)
+	audio.click_buttons()
 	add_child(globe)
 	add_child(ui)
 	marks.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -61,6 +64,7 @@ func _query_has(key: String) -> bool:
 # ---------- titre ----------
 
 func _title() -> void:
+	audio.music("mus_01_abyss_protocol", 0.5)
 	title_shown = true
 	var root := Control.new()
 	root.name = "Title"
@@ -106,6 +110,7 @@ func _new_campaign() -> void:
 # ---------- interface ----------
 
 func _build_ui() -> void:
+	audio.music("mus_04_command_center", 2.0)
 	globe.set_time(c)
 	globe.view = StratData.BASE_POS + Vector2(-8, -10)
 	globe._place_cam()
@@ -228,6 +233,7 @@ func _refresh() -> void:
 		_side_panel()
 
 func _events(ev: Array) -> void:
+	audio.strategy_events(ev)
 	for e in ev:
 		var t: String = e.get("t", "")
 		if t == "error":
