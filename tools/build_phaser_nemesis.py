@@ -34,6 +34,10 @@ def nemesis_map():
     return re.findall(r"'([^']+)'", block)
 
 
+def ndimage_blur(a, s):
+    return np.asarray(Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(s)), np.float32) / 255
+
+
 def tex(name, size=None):
     im = Image.open(os.path.join(SRC, "textures", name + ".png")).convert("RGB")
     a = np.asarray(im, dtype=np.float32) / 255.0
@@ -94,6 +98,51 @@ def bake_floor(rows):
     col[mat == 1] = (col[mat == 1] * 0.45 + g1 * 0.55) * np.array([0.78, 0.86, 0.95])
     col[mat == 2] *= 0.8
 
+    # Dalles isométriques de Max (assets2d/tiles, extraites par tools/iso_tile.py) : chacune couvre S×S cases,
+    # alignée sur la grille ; les dalles contaminées varient par miroir pour éviter la répétition.
+    D = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c == "D"][0]
+    dist = np.hypot(gx - D[0], (gy - D[1]) * 1.15)
+    tdist = np.hypot(txc - D[0], (tyc - D[1]) * 1.15)
+    tiles_dir = os.path.join(ROOT, "assets2d", "tiles")
+    evac = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c in "ES"]
+    ex0, ey0 = min(p[0] for p in evac), min(p[1] for p in evac)
+    plan = [  # (masque de cases, dalle, S, ancre fixe ou None)
+        ((mat == 0) & (tdist >= 3.3), "metal_abime", 2, None),
+        ((mat == 1) & (tdist >= 3.3), "metal_propre", 2, None),
+        ((mat == 3), "trappe_sas", 3, (ex0, ey0)),
+        (np.isin(mat, [0, 1]) & (tdist < 3.3) & (tdist >= 1.6), "metal_contamine", 1, None),
+        (np.isin(mat, [0, 1]) & (tdist < 1.6), "rock_alien", 1, None),
+    ]
+    for m, name, span, anchor in plan:
+        path = os.path.join(tiles_dir, name + ".png")
+        if not os.path.exists(path):
+            continue
+        t = np.asarray(Image.open(path).convert("RGBA"), np.float32) / 255
+        th, tw = t.shape[:2]
+        lum = t[..., :3].mean(axis=2)
+        gyl, gxl = np.gradient(ndimage_blur(lum, 1.2))
+        tn = np.dstack([-gxl * 6, -gyl * 6, np.ones_like(lum)])
+        tn /= np.linalg.norm(tn, axis=2, keepdims=True)
+        if anchor:
+            bx, by = anchor[0], anchor[1]
+        else:
+            bx, by = (txc // span) * span, (tyc // span) * span
+        u = (gx + 0.5 - bx) / span
+        v = (gy + 0.5 - by) / span
+        if span == 1:  # miroirs selon la case
+            hv = (txc * 7 + tyc * 13) % 4
+            sw = (hv & 1) == 1
+            u, v = np.where(sw, v, u), np.where(sw, u, v)
+            fl = (hv & 2) == 2
+            u, v = np.where(fl, 1 - v, u), np.where(fl, 1 - u, v)
+        u, v = np.clip(u, 0, 1), np.clip(v, 0, 1)
+        px = np.clip(((u - v) * 0.5 + 0.5) * (tw - 1), 0, tw - 1).astype(int)
+        py = np.clip((u + v) * 0.5 * (th - 1), 0, th - 1).astype(int)
+        col[m] = t[py[m], px[m], :3]
+        nor[m] = tn[py[m], px[m]] * 0.5 + 0.5
+        mat[m] = 10  # déjà en coordonnées écran : pas de rotation de normale
+    tile_done = mat == 10
+
     # eau : fond sombre bleu-vert (la surface animée est faite dans le jeu)
     water = inside & (ch == "~")
     col[water] = col[water] * 0.25 + np.array([0.02, 0.10, 0.13])
@@ -108,19 +157,10 @@ def bake_floor(rows):
     ao = 1.0 - 0.62 * blur[bi, bj]
     col *= ao[..., None]
 
-    # contamination autour de la cuve (artefact D) et du nid de la Carapace : chair alien violacée
-    flesh = tex("flesh_albedo")
-    D = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c == "D"][0]
-    dist = np.hypot(gx - D[0], (gy - D[1]) * 1.15)
-    noise = flesh[np.clip(((gy * 0.37) % 1 * 511).astype(int), 0, 511), np.clip(((gx * 0.37) % 1 * 511).astype(int), 0, 511), 0]
-    k = np.clip((3.4 - dist) / 2.2 + (noise - 0.5) * 0.9, 0, 1) * (mat != 4)
-    purple = np.array([0.20, 0.07, 0.26]) * (0.6 + noise[..., None])
-    col = col * (1 - 0.75 * k[..., None]) + purple * (0.75 * k[..., None])
-
     # joints de grille très discrets (lisibilité tactique sans quadrillage criard)
     fx, fy = np.abs(gx - np.rint(gx)), np.abs(gy - np.rint(gy))
     seam = ((fx > 0.485) | (fy > 0.485)) & (mat != 4) & ~water
-    col[seam] *= 0.7
+    col[seam] *= 0.82
 
     alpha = (inside & (mat != 4)).astype(np.float32)
     # bord adouci sous les cloisons (aucun liseré)
@@ -136,6 +176,8 @@ def bake_floor(rows):
     nz = n[..., 2] * 1.6               # sol vu de 3/4 : relief adouci
     l = np.sqrt(nx ** 2 + ny ** 2 + nz ** 2) + 1e-6
     nmap = np.dstack([nx / l, -ny / l, nz / l]) * 0.5 + 0.5
+    nmap[tile_done] = nor[tile_done] * np.array([1, 1, 1])  # dalles : normales déjà en espace écran
+    nmap[tile_done, 1] = 1 - nmap[tile_done, 1]
     nmap[~(alpha > 0)] = [0.5, 0.5, 1.0]
     nimg = Image.fromarray((nmap * 255).astype(np.uint8), "RGB")
     save(floor, "floor.webp", 90)

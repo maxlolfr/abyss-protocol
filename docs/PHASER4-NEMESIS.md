@@ -8,6 +8,10 @@ jouable au doigt, sur la même simulation TypeScript et le même HUD que le prot
 - Ressources : `python3 -I tools/build_phaser_nemesis.py` → `phaser/public/nemesis/` (2,8 Mo, relançable, rien d'autre n'est écrit).
 - Tests : Vitest (2 nouveaux tests Némésis dans `tests/engine.test.ts`), Playwright `e2e/nemesis.spec.ts` (toucher, aperçu, confirmation, tour alien, 0 erreur).
 
+## Dalles de sol de Max (26/11, 6 h 50)
+- 6 dalles isométriques reçues (2 identiques) → `tools/iso_tile.py` repère la face du dessus et la ramène au losange 2:1 → `assets2d/tiles/` (512×256, versions allégées ; masters dans `~/abyss_masters/floors`).
+- Sol précalculé : métal propre (centre, 2×2 cases par dalle), métal abîmé (pourtour, 2×2), trappe sur tout le sas (3×3), métal contaminé puis roche alien en se rapprochant de la cuve (1 case, miroirs pour varier). Normal map tirée du relief de chaque dalle.
+
 ## Ce qui est en place
 - **Simulation** : `NEMESIS_MAP` (même plan que `godot/sim/data.gd`), `createBattle(seed, 'nemesis')`, 3 aliens fixes renforcés (valeurs Godot). Sauvegarde séparée (`nemesis.*`).
 - **Rendu** (`src/nemesis/NemesisScene.ts`, contrat `src/game/view.ts` partagé avec le prototype) :
