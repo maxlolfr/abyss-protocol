@@ -14,5 +14,6 @@ func _initialize() -> void:
 	var t0 := Time.get_ticks_msec()
 	while main.battle.outcome == "ongoing" and Time.get_ticks_msec() - t0 < 120000:
 		await process_frame
+	print("sons joués : ", main.audio.played, " musique : ", main.audio._track, " ambiance : ", main.audio._amb.playing)
 	print("partie vue : %s au tour %d (%d ms)" % [main.battle.outcome, main.battle.turn, Time.get_ticks_msec() - t0])
 	quit()

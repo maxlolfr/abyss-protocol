@@ -50,6 +50,8 @@ var pinch_d := 0.0
 var drag_moved := false
 var drag_from := Vector2.ZERO
 var mats := {}
+var audio := AbyssAudio.new()
+var combat_music := false
 var show_intro := true # écran titre + briefing (désactivé par les captures et tests)
 
 func _ready() -> void:
@@ -61,6 +63,9 @@ func _ready() -> void:
 		_build_unit(u)
 	add_child(overlay)
 	_build_camera()
+	add_child(audio)
+	pivot.add_child(audio.listener) # écouteur au centre de la vue (la caméra orthographique est à 30 m)
+	audio.listener.make_current()
 	hud = AbyssHud.new()
 	add_child(hud)
 	hud.action.connect(_on_action)
@@ -87,11 +92,28 @@ func _ready() -> void:
 	if show_intro and not auto:
 		var sc := AbyssScreens.new()
 		add_child(sc)
+		audio.music("mus_01_abyss_protocol", 0.5)
+		sc.closed.connect(_mission_audio)
 		sc.show_title(resumed, func():
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 			get_tree().reload_current_scene())
+	else:
+		_mission_audio()
 	if OS.has_feature("web") and JavaScriptBridge.eval("new URLSearchParams(location.search).has('autoplay')"):
 		_autoplay()
+
+## Ambiance du labo + musique d'exploration ; passage au thème de combat au premier contact ou à l'alarme.
+func _mission_audio() -> void:
+	audio.ambience(true)
+	audio.music("mus_03_contact_hostile" if combat_music else "mus_02_silent_depths", 2.0)
+
+func _combat_audio() -> void:
+	if not combat_music:
+		combat_music = true
+		audio.music("mus_03_contact_hostile", 1.5)
+
+func _where(u: AbyssUnit) -> Variant:
+	return unit_nodes[u.id].global_position + Vector3(0, 1, 0) if _visible(u) else null
 
 func _query(key: String) -> String:
 	if not OS.has_feature("web"):
@@ -451,6 +473,7 @@ func _on_setting(key: String, v: Variant) -> void:
 		"shadows":
 			sun.shadow_enabled = v
 		"quality": _apply_quality(v)
+		"sound": audio.set_enabled(v)
 
 ## Niveaux de qualité. Haute : tout ; Moyenne (défaut sur téléphone) : rendu 3D à 65 % de la résolution native
 ## (les écrans mobiles sont à 3x) ; Basse : 45 %, sans ombres, sans halo, sans lampes frontales ni neige marine.
@@ -619,6 +642,7 @@ func _confirm() -> void:
 		return
 	var cmd: Dictionary = pending["cmd"]
 	pending = {}
+	audio.ui()
 	await _run(cmd)
 
 func _select(u: AbyssUnit) -> void:
@@ -773,6 +797,7 @@ func _run(cmd: Dictionary) -> void:
 	if battle.outcome != "ongoing":
 		_clear_overlay()
 		hud.show_end(battle)
+		audio.music("mus_01_abyss_protocol", 2.0)
 		_refresh_hud()
 		return
 	if selected == null or not selected.alive or selected.evacuated:
@@ -904,6 +929,8 @@ func _play(events: Array) -> void:
 				var dur := 0.2 / speed
 				_walk_bob(n, dur)
 				_follow(to)
+				if u.kind != "spectre":
+					audio.sfx("step_metal", to, -9.0 if u.human else -11.0, 1.0 if u.human else (0.75 if u.kind == "carapace" else 1.15), 0.12)
 				var tw := create_tween()
 				tw.tween_property(n, "position", to, dur)
 				await tw.finished
@@ -913,6 +940,8 @@ func _play(events: Array) -> void:
 				var u := battle.unit(e["unit"])
 				unit_nodes[u.id].visible = true
 				hud.flash("Contact sonar : %s" % u.name, AbyssHud.RED)
+				audio.sfx("nereid_alert" if u.kind == "nereide" else "sonar_signature", null, -2.0)
+				_combat_audio()
 				if battle.side != "human":
 					create_tween().tween_property(pivot, "position", Vector3(u.cell.x + 0.5, 0, u.cell.y + 0.5), 0.3 / speed)
 				await _wait(0.35)
@@ -943,6 +972,9 @@ func _play(events: Array) -> void:
 				# départ : flash de bouche (VFX-001) ou onde psychique (VFX-008), puis projectile visible
 				var w: String = e["weapon"]
 				_flash_light(a, col, 4.0, 4.0, 0.2)
+				var snd: Array = {"rifle": ["rifle_fire", 1.0, 0.0], "pistol": ["rifle_fire", 1.25, -4.0], "harpoon": ["harpoon_fire", 1.0, 0.0],
+					"dart": ["alien_plasma", 1.1, -2.0], "acid": ["alien_plasma", 0.7, 0.0], "psi": ["spectre_psionic", 1.0, -1.0]}[w]
+				audio.sfx(snd[0], _where(u), snd[2], snd[1])
 				if w == "psi":
 					AbyssFx.ring(self, a, Color(col, 0.9), 1.0, 0.3 / speed, false)
 					await _wait(0.18)
@@ -964,6 +996,8 @@ func _play(events: Array) -> void:
 				elif e["hit"] and not victim.is_empty():
 					surf = "human" if victim[0].human else "alien"
 				AbyssFx.impact(self, b, surf)
+				if surf in ["human", "metal"]:
+					audio.sfx("armor_impact", b, -3.0 if surf == "human" else -8.0, 1.0 if surf == "human" else 1.2)
 				if not e["hit"]:
 					_float(_cell_pos(e["to"]), "Raté (%d %%)" % e["chance"], Color("c9d6e0"))
 				await _wait(0.22)
@@ -1005,6 +1039,7 @@ func _play(events: Array) -> void:
 				var at := _cell_pos(e["at"])
 				_flash_light(at + Vector3(0, 1, 0), Color("ff8a3d"), 9.0, 9.0, 0.8)
 				AbyssFx.explosion(self, at)
+				audio.sfx("grenade_blast", at)
 				var ring := TorusMesh.new(); ring.inner_radius = 0.2; ring.outer_radius = 0.35
 				var rm := _mesh(self, ring, at + Vector3(0, 0.1, 0), _mat("shock", Color("ffb547"), 0, 1, Color("ff7a20"), 0.6))
 				var tw := create_tween().set_parallel()
@@ -1024,6 +1059,7 @@ func _play(events: Array) -> void:
 					continue
 				if wall_nodes.has(k):
 					_collapse(wall_nodes[k])
+					audio.sfx("grenade_blast", _cell_pos(e["at"]), -7.0, 1.35)
 					wall_nodes.erase(k)
 				await _wait(0.15)
 			"heal":
@@ -1038,12 +1074,15 @@ func _play(events: Array) -> void:
 			"pickup":
 				hud.flash("%s récupère l'artefact" % battle.unit(e["unit"]).name, AbyssHud.CYAN)
 				artifact_node.visible = false
+				audio.sfx("artifact_pulse", null, -1.0)
 			"alarm":
 				hud.flash("L'artefact pulse : tous les hostiles convergent !", AbyssHud.RED)
+				_combat_audio()
 				_flash_light(_cell_pos(battle.unit(events.filter(func(x): return x["t"] == "pickup")[0]["unit"]).cell) + Vector3(0, 1, 0), Color("39d9ef"), 14.0, 6.0, 1.2)
 				await _wait(0.6)
 			"logs":
 				hud.flash("Journal du terminal téléchargé", AbyssHud.GREEN)
+				audio.sfx("sonar_signature", null, -6.0, 1.2)
 			"drop":
 				hud.flash("L'artefact est tombé au sol", AbyssHud.RED)
 			"bleed":
@@ -1052,6 +1091,7 @@ func _play(events: Array) -> void:
 				hud.flash("Activité hostile…" if e["side"] == "alien" else "Tour %d" % e["turn"], AbyssHud.RED if e["side"] == "alien" else AbyssHud.CYAN)
 				_refresh_hud()
 			"evacuate":
+				audio.sfx("airlock", null, -2.0)
 				for id in e["units"]:
 					var n: Node3D = unit_nodes[id]
 					create_tween().tween_property(n, "position:y", n.position.y + 3.0, 0.6)
@@ -1089,3 +1129,4 @@ func _autoplay() -> void:
 			await _run({"type": "end_turn"})
 	if battle.outcome != "ongoing":
 		hud.show_end(battle)
+		audio.music("mus_01_abyss_protocol", 2.0)

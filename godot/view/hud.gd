@@ -34,7 +34,7 @@ var menu: PanelContainer
 var end_panel: PanelContainer
 var end_lbl: Label
 var _toast_t := 0.0
-var _settings := {"speed": 1.0, "shadows": true, "cine": true, "fps": true, "quality": "haute"}
+var _settings := {"sound": true, "speed": 1.0, "shadows": true, "cine": true, "fps": true, "quality": "haute"}
 var quality_btn: Button
 
 func _ready() -> void:
@@ -103,7 +103,7 @@ func _ready() -> void:
 	root.add_child(menu)
 	var mv := VBoxContainer.new()
 	menu.add_child(mv)
-	for s in [["shadows", "Ombres dynamiques"], ["cine", "Caméra cinématique"], ["fps", "Afficher les i/s"]]:
+	for s in [["sound", "Son et musique"], ["shadows", "Ombres dynamiques"], ["cine", "Caméra cinématique"], ["fps", "Afficher les i/s"]]:
 		var c := CheckButton.new()
 		c.text = s[1]
 		c.button_pressed = _settings[s[0]]
