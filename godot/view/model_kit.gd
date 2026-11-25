@@ -202,13 +202,14 @@ static func is_alien(name: String) -> bool:
 			return true
 	return false
 
-## Objet 3D isolé (couvert, objet mural, décor) mis à l'échelle sur sa hauteur, ou null.
-static func node(rel: String, height: float) -> Node3D:
+## Objet 3D isolé (couvert, objet mural, décor) mis à l'échelle sur sa hauteur (ou sa largeur, mode "width",
+## pour les pièces plates : trappe, passerelle), ou null.
+static func node(rel: String, height: float, mode := "height") -> Node3D:
 	if rel == "" or not _exists(rel):
 		return null
-	var ck := "node|" + rel
+	var ck := "node|%s|%s" % [rel, mode]
 	if not _cache.has(ck):
-		var fm := _fit_mesh(rel, "height", 1.0)
+		var fm := _fit_mesh(rel, mode, 1.0)
 		_cache[ck] = fm
 	var fm: Dictionary = _cache[ck]
 	if fm.is_empty():
@@ -217,6 +218,7 @@ static func node(rel: String, height: float) -> Node3D:
 	mi.mesh = fm["mesh"]
 	mi.transform = fm["xform"]
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	mi.set_meta("model", true) # ombre portée seulement en qualité haute (main.gd, _apply_quality)
 	var holder := Node3D.new()
 	holder.scale = Vector3.ONE * height
 	holder.add_child(mi)

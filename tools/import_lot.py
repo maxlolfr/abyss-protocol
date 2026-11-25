@@ -35,7 +35,7 @@ KIT += ["couvert_bas_%02d" % i for i in range(1, 13)] + ["couvert_haut_%02d" % i
 PROPS = ["terminal_vertical", "console_commandement", "panneau_electrique", "reacteur", "capsule_confinement",
          "caisse_militaire", "barricade", "conteneur", "reservoir", "equipement_labo", "tuyau_droit", "tuyau_coude",
          "technologie_humaine", "arche_alien", "structure_organique", "cristaux_violets", "roche", "oeuf_alien", "cocon",
-         "nid_alien", "masse_organique", "artefact_alien", "technologie_biomecanique", "ruche", "noyau_nid"]
+         "nid_alien", "masse_organique", "artefact_alien", "technologie_biomecanique", "ruche", "noyau_nid", "trappe", "passerelle_etroite"]
 UNITS = ["walker", "okafor", "lind", "moreau", "recrue_a", "recrue_b", "nereide", "carapace", "spectre", "brute",
          "leviathan"]
 WEAPONS = ["fusil_assaut", "fusil_precision", "arme_lourde", "pistolet", "arme_energie", "arme_alien", "grenade",
@@ -84,7 +84,8 @@ ALIASES = {
     "industrial_pipeline_3d": "tuyau_droit", "sci_fi_power_core_3d": "reacteur",
     "industrial_floor_grate_3d": "sol_grille", "sci_fi_canister_3d": "capsule_confinement",
     "sci_fi_floor_tile_3d": "sol_dalle", "sci_fi_floor_panel_3d": "sol_dalle_02", "alien_organic_floor_3d": "sol_dalle_nid",
-    "purple_lava_stone_3d": "sol_dalle_02_nid",
+    "purple_lava_stone_3d": "sol_dalle_02_nid", "metal_hatch_window_3d": "trappe",
+    "industrial_catwalk_3d": "passerelle_etroite",
 }
 # budget de triangles par catégorie (au-delà : avertissement ; le jeu reste jouable mais plus lourd sur téléphone)
 BUDGET = {"kit": 3000, "props": 6000, "units": 20000, "weapons": 3000, "crafts": 15000, "rooms": 20000}

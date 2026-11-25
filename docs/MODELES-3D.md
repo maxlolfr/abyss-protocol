@@ -103,3 +103,10 @@ Coût de rendu (primitives, `campaign_battle_shot.gd`) avant → après : épave
 
 ### Sols reçus à 23 h (à réexporter)
 `sci-fi floor tile` (→ `sol_dalle` station), `sci-fi floor panel` (→ `sol_dalle_02`, variante semée une case sur cinq), `alien organic floor` (→ `sol_dalle` du Nid), `purple lava stone` (→ `sol_dalle_02` du Nid) : très bons budgets (330 à 470 triangles), mais **compressés** (gltfpack, `EXT_meshopt_compression`) : Godot ne les lit pas. Les réexporter depuis Tripo en GLB **sans compression** ; le jeu est déjà prêt (clés `floor` et `floor_b`, dalles tournées d'un quart de tour au hasard). L'outil d'import signale désormais ces fichiers au lieu de les ranger. `industrial floor grate` reçu deux fois (identique).
+
+### Optimisation téléphone (25/11, 23 h 15)
+- Murs, sols, piliers : un MultiMesh par type (déjà en place) ; maillage et matériaux d'un modèle chargés une seule fois (cache de `ModelKit`).
+- **Ombres** : en qualité haute, les modèles projettent leurs vraies ombres. En **moyenne** (défaut téléphone), les pièces répétées projettent l'ombre d'une **boîte à leurs dimensions** (12 triangles) et les objets isolés n'en projettent pas. En basse et allégée, il n'y a pas d'ombres (inchangé). Les ombres simplifiées des coques s'abaissent avec la paroi côté caméra.
+- Primitives mesurées (haute → moyenne → allégée) : épave 492 k → 306 k → 173 k, Nid 712 k → 384 k → 249 k, port 259 k → 246 k.
+- `trappe` (metal hatch window, plaque plate) : posée à plat sur une dalle de la station sur 17, 0,85 m de large (`ModelKit.node(…, "width")`). `passerelle_etroite` (catwalk 0,33 × 1 m) : rangée à sa taille réelle (14 400 triangles), en attente d'un emplacement.
+- Mesure sur appareil (i/s) : compteur dans le menu du jeu ; profils haute / moyenne / basse / allégée et baisse automatique sous 24 i/s (déjà en place).

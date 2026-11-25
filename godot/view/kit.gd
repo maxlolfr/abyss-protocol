@@ -320,6 +320,25 @@ static func batch(parent: Node3D, key: String, make: Callable, xforms: Array) ->
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	parent.add_child(mi)
+	if ext: # ombre portée par une boîte aux dimensions du modèle (qualité moyenne) : 12 triangles au lieu de milliers
+		var box := BoxMesh.new()
+		var aabb: AABB = ext["xform"] * (ext["mesh"] as Mesh).get_aabb()
+		box.size = aabb.size
+		var pm := MultiMesh.new()
+		pm.transform_format = MultiMesh.TRANSFORM_3D
+		pm.mesh = box
+		pm.instance_count = xforms.size()
+		var off := Transform3D(Basis.IDENTITY, aabb.get_center())
+		for i in xforms.size():
+			pm.set_instance_transform(i, (xforms[i] as Transform3D) * off)
+		var proxy := MultiMeshInstance3D.new()
+		proxy.multimesh = pm
+		proxy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		proxy.set_meta("shadow_proxy", true)
+		proxy.set_meta("offset", off)
+		mi.set_meta("proxy", proxy)
+		mi.set_meta("model", true)
+		parent.add_child(proxy)
 	return mi
 
 ## Instancie une pièce (maillage partagé) ; `make` n'est appelé qu'une fois par clé.

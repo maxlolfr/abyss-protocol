@@ -51,6 +51,7 @@ var mobile := false
 var _auto_quality := false # sur téléphone : baisse automatique si les i/s restent faibles
 var _slow_t := 0.0
 var hull_fit := {} # mise en place des modèles de coque livrés (ModelKit), par clé
+var hull_proxy := {} # ombres simplifiées des coques livrées (qualité moyenne)
 var hull_mm := {} # coque en MultiMesh : la coupe côté caméra modifie les instances
 var fog_layers: Array[MultiMesh] = [] # [inconnu, mémorisé]
 var overlay := Node3D.new()
@@ -497,6 +498,13 @@ func _build_map() -> void:
 			else:
 				var fk := "floor_b" if (x * 7 + y * 13) % 5 == 0 and not ModelKit.piece("floor_b", K.theme).is_empty() else "floor"
 				_bat(batch, fk, Transform3D(Basis(Vector3.UP, PI / 2 * ((x + y * 3) % 4)), c)) # dalles tournées : moins de répétition
+				if K.theme == "station" and (x * 11 + y * 5) % 17 == 0 and g.tile(p) == AbyssGrid.T.FLOOR: # trappes de service
+					var hatch := ModelKit.node("props/trappe", 0.85, "width")
+					if hatch:
+						hatch.position = c + Vector3(0, -0.04, 0)
+						hatch.rotation.y = PI / 2 * ((x + y) % 2)
+						add_child(hatch)
+						_track(p, hatch)
 				if battle.in_evac(p): # pourtour du sas seulement
 					for d in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
 						if not battle.in_evac(p + d) and g.tile(p + d) != AbyssGrid.T.HULL:
@@ -540,6 +548,8 @@ func _build_map() -> void:
 		if key.begins_with("hull"):
 			hull_mm[key] = mmi.multimesh
 			hull_fit[key] = ModelKit.piece(key, K.theme).get("xform", Transform3D.IDENTITY) # mise en place du modèle livré
+			if mmi.has_meta("proxy"):
+				hull_proxy[key] = mmi.get_meta("proxy")
 	# brouillard : deux couches (inconnu = masqué, mémorisé = assombri), une instance par case
 	for alpha in [1.0, 0.62]:
 		var mm := MultiMesh.new()
@@ -693,6 +703,9 @@ func _update_cutaway() -> void:
 		var yo := -PI / 4 if hn[2] == "hull_c" else 0.0 # angle : coin extérieur vers +X+Z dans le modèle
 		var b := Basis(Vector3.UP, atan2((hn[1] as Vector3).x, (hn[1] as Vector3).z) + yo).scaled(Vector3(1, cut if low else 1.0, 1))
 		mm.set_instance_transform(hn[3], Transform3D(b, (hn[0] as Node3D).position) * (hull_fit.get(hn[2], Transform3D.IDENTITY) as Transform3D))
+		if hull_proxy.has(hn[2]): # ombre simplifiée abaissée avec la paroi
+			var pr: MultiMeshInstance3D = hull_proxy[hn[2]]
+			pr.multimesh.set_instance_transform(hn[3], Transform3D(b, (hn[0] as Node3D).position) * (pr.get_meta("offset") as Transform3D))
 	dressing.update_cutaway(back)
 
 func _on_setting(key: String, v: Variant) -> void:
@@ -722,6 +735,12 @@ func _apply_quality(q: String) -> void:
 	get_viewport().msaa_3d = Viewport.MSAA_DISABLED if lite else Viewport.MSAA_2X
 	Engine.max_fps = 30 if lite else 0
 	sun.shadow_enabled = not lo
+	# modèles 3D répétés (MultiMesh) : vraies ombres en haute, ombres de boîtes en moyenne (bien moins de triangles)
+	for mmi in find_children("*", "GeometryInstance3D", true, false):
+		if mmi.has_meta("model"):
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if q == "haute" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		elif mmi.has_meta("shadow_proxy"):
+			mmi.visible = q == "moyenne"
 	RenderingServer.directional_shadow_atlas_set_size(2048 if q == "haute" else 1024, true)
 	world_env.environment.glow_enabled = not lo
 	# allégée : les lampes coupées sont compensées par une ambiance et un soleil plus forts (gratuits)
