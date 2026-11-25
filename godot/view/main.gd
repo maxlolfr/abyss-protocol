@@ -50,6 +50,7 @@ const QUALITIES := ["haute", "moyenne", "basse", "allégée"]
 var mobile := false
 var _auto_quality := false # sur téléphone : baisse automatique si les i/s restent faibles
 var _slow_t := 0.0
+var hull_fit := {} # mise en place des modèles de coque livrés (ModelKit), par clé
 var hull_mm := {} # coque en MultiMesh : la coupe côté caméra modifie les instances
 var fog_layers: Array[MultiMesh] = [] # [inconnu, mémorisé]
 var overlay := Node3D.new()
@@ -459,8 +460,9 @@ func _build_map() -> void:
 				var edge := x == 0 or y == 0 or x == g.w - 1 or y == g.h - 1
 				var win := edge and (x + y) % 3 == 0 and not ((x == 0 or x == g.w - 1) and (y == 0 or y == g.h - 1))
 				var n := Vector3(-1 if x == 0 else (1 if x == g.w - 1 else 0), 0, -1 if y == 0 else (1 if y == g.h - 1 else 0))
-				var hk := "hull_w" if win else "hull"
-				_bat(batch, hk, Transform3D(Basis(Vector3.UP, atan2(n.x, n.z)), hn.position))
+				var corner := (x == 0 or x == g.w - 1) and (y == 0 or y == g.h - 1)
+				var hk := "hull_w" if win else ("hull_c" if corner else "hull") # angle : modèle « mur_angle » s'il est livré
+				_bat(batch, hk, Transform3D(Basis(Vector3.UP, atan2(n.x, n.z) - (PI / 4 if corner else 0.0)), hn.position))
 				if win and (x + y) % 2 == 0 and AbyssKit.theme == "station":
 					var beam := K.spawn("beam", K.light_beam, hn, Vector3.ZERO, atan2(-n.x, -n.z))
 					beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -516,17 +518,23 @@ func _build_map() -> void:
 				else:
 					var cvs := K.covers()
 					var cv: Array = cvs[(x * 7 + y * 3) % cvs.size()]
-					n.add_child(K.prop(cv[0], cv[1]))
+					var model := ModelKit.cover(K.theme, false, x * 7 + y * 3) # couverts 3D livrés (couvert_bas_NN)
+					if model:
+						model.rotation.y = PI / 2 * ((x * 3 + y) % 4)
+						n.add_child(model)
+					else:
+						n.add_child(K.prop(cv[0], cv[1]))
 					n.set_meta("wreck", cv[2])
 				wall_nodes[g.idx(p)] = n
 				_track(p, n)
 	# sols, passerelles et bassins : un objet par type de dalle (MultiMesh)
 	var makers := {"floor": K.floor_tile.bind(false), "evac_edge": K.evac_edge, "deck_high": K.deck_high, "pool": K.pool,
-		"hull": K.hull.bind(false), "hull_w": K.hull.bind(true)}
+		"hull": K.hull.bind(false), "hull_c": K.hull.bind(false), "hull_w": K.hull.bind(true)}
 	for key in batch:
 		var mmi := K.batch(self, key, makers[key], batch[key])
 		if key.begins_with("hull"):
 			hull_mm[key] = mmi.multimesh
+			hull_fit[key] = ModelKit.piece(key, K.theme).get("xform", Transform3D.IDENTITY) # mise en place du modèle livré
 	# brouillard : deux couches (inconnu = masqué, mémorisé = assombri), une instance par case
 	for alpha in [1.0, 0.62]:
 		var mm := MultiMesh.new()
@@ -606,6 +614,8 @@ func _build_unit(u: AbyssUnit) -> void:
 	add_child(root)
 	unit_nodes[u.id] = root
 	var body := UnitVisuals.build(u.kind, _mat, u.visual if u.visual != "" else u.id)
+	if body is ModelUnit:
+		(body as ModelUnit).equip(u.weapon) # arme 3D livrée (weapons/), sinon rien ne change
 	body.name = "Body"
 	root.add_child(body)
 	if u.human:
@@ -675,9 +685,9 @@ func _update_cutaway() -> void:
 		var cut := 0.45 if AbyssKit.theme == "port" else 0.12 # le quai est déjà bas : on garde le béton
 		(hn[0] as Node3D).scale = Vector3(1, cut if low else 1.0, 1)
 		var mm: MultiMesh = hull_mm[hn[2]]
-		var t := mm.get_instance_transform(hn[3])
-		t.basis = Basis(Vector3.UP, atan2((hn[1] as Vector3).x, (hn[1] as Vector3).z)).scaled(Vector3(1, cut if low else 1.0, 1))
-		mm.set_instance_transform(hn[3], t)
+		var yo := -PI / 4 if hn[2] == "hull_c" else 0.0 # angle : coin extérieur vers +X+Z dans le modèle
+		var b := Basis(Vector3.UP, atan2((hn[1] as Vector3).x, (hn[1] as Vector3).z) + yo).scaled(Vector3(1, cut if low else 1.0, 1))
+		mm.set_instance_transform(hn[3], Transform3D(b, (hn[0] as Node3D).position) * (hull_fit.get(hn[2], Transform3D.IDENTITY) as Transform3D))
 	dressing.update_cutaway(back)
 
 func _on_setting(key: String, v: Variant) -> void:
@@ -1065,9 +1075,8 @@ func _process(delta: float) -> void:
 			if depth > 0.2 and depth < 2.6 and absf(d.dot(side)) < 0.75 and at.y <= n.position.y + 0.1:
 				hide = true
 				break
-		for c in n.get_children():
-			if c is GeometryInstance3D:
-				(c as GeometryInstance3D).transparency = 0.6 if hide else 0.0
+		for c in n.find_children("*", "GeometryInstance3D", true, false): # sprites et modèles 3D (maillages imbriqués)
+			(c as GeometryInstance3D).transparency = 0.6 if hide else 0.0
 	# contamination : premier soldat à moins de 2 cases d'une excroissance
 	if not _story.has("goo") and battle.side == "human":
 		for u in battle.living(true):

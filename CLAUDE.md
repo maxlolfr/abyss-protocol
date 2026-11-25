@@ -39,6 +39,12 @@ Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA
 - À demander : versions avec auto-rig + animations Tripo (idle, marche, tir), armes en main ou armes séparées, Walker et Moreau, Carapace, Spectre.
 - Aperçus : `tests/model_preview.gd`, `tests/lineup.gd` (inclut la Brute).
 
+## Intégration des modèles 3D de Max (25/11 22 h 30, branche `claude-b/integration-3d`)
+- Max envoie ses modèles Tripo par ZIP (8 lots, inventaire dans `docs/MODELES-3D.md` : priorités, noms, budgets, doublons).
+- Import : `python3 -I tools/import_lot.py lot.zip [--dry]` (noms reconnus, triangles, version allégée rangée ; originaux jamais publiés). Puis `godot --headless --path godot --import`, captures (`tests/campaign_battle_shot.gd`, `tests/shot.gd`), réglages dans `TUNING` de `view/model_kit.gd`.
+- Branchement : `view/model_kit.gd` (kit, couverts, objets, armes), `view/model_unit.gd` (squelette, animations, arme), test `tests/model_kit_test.gd` (CI).
+- Décors Port/Nid fusionnés (#11). Ne rien régénérer de payant.
+
 ## Prochaines étapes probables
 1. Suite de `docs/NEMESIS.md` : N1 à N4 faits (N4 = refonte visuelle avec les sprites des planches de Max, interface, performance). Inventaire des ressources : `Game-studio-ai/docs/studio/art/abyss-protocol/ASSET_INVENTORY.md`. Max a autorisé (25/11 15 h 36) la publication des versions allégées de ses créations dans le jeu public, jamais les originaux, zips, planches complètes ni prompts.
 2. Mesures d'i/s de Max (haute / moyenne / allégée) ; Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).
