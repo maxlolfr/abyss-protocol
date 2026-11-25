@@ -12,8 +12,62 @@ static func run(b: AbyssBattle, human_side: bool, ev: Array) -> void:
 		if b.outcome != "ongoing":
 			return
 		if a.alive:
-			_act(b, a, ev)
+			if not (human_side and _objective(b, a, ev)):
+				_act(b, a, ev)
 		b._check_outcome(ev)
+	if human_side and b.outcome == "ongoing" and _objective_map(b):
+		var split := b.evac_split()
+		if split["leaving"].any(func(h): return h.carrying):
+			ev.append_array(b.apply({"type": "evacuate"}))
+
+static func _objective_map(b: AbyssBattle) -> bool:
+	return not AbyssData.ELIMINATION_WINS.get(b.map_id, true)
+
+## Escouade, cartes à objectif (Némésis) : le soldat le plus proche va chercher l'artefact, le porteur
+## court au sas, les autres le couvrent. Renvoie true si l'unité a fini son tour ici.
+static func _objective(b: AbyssBattle, a: AbyssUnit, ev: Array) -> bool:
+	if not _objective_map(b):
+		return false
+	var carrier: AbyssUnit = null
+	for h in b.living(true):
+		if h.carrying:
+			carrier = h
+	if a.carrying:
+		if b.in_evac(a.cell):
+			return true
+		var goal := b.evac[0]
+		for e in b.evac:
+			if Vector2(a.cell).distance_to(Vector2(e)) < Vector2(a.cell).distance_to(Vector2(goal)):
+				goal = e
+		_walk_toward(b, a, goal, 0, ev)
+		return true
+	if carrier != null:
+		# escorte : combat normal, puis rejoint le sas quand aucun hostile n'est en vue
+		if b.spotted_by(true).is_empty() and not b.in_evac(a.cell):
+			_walk_toward(b, a, b.evac[b.evac.size() / 2], 0, ev)
+			return true
+		return false
+	if b.artifact.x < 0:
+		return false
+	var fetcher := a
+	for h in b.living(true):
+		if Vector2(h.cell).distance_to(Vector2(b.artifact)) < Vector2(fetcher.cell).distance_to(Vector2(b.artifact)) - 0.01:
+			fetcher = h
+	if fetcher != a:
+		if b.spotted_by(true).is_empty():
+			_walk_toward(b, a, b.artifact, b.shot_cost(a, "snap") * 2, ev)
+			return true
+		return false
+	if b.interact_target(a) == "artifact" and a.tu >= AbyssData.INTERACT_TU:
+		ev.append_array(b.apply({"type": "interact", "unit": a.id}))
+		return true
+	# le fetcheur avance si peu d'hostiles en vue, sinon il combat
+	if b.spotted_by(true).size() <= 1:
+		_walk_toward(b, a, b.artifact, AbyssData.INTERACT_TU, ev)
+		if b.interact_target(a) == "artifact" and a.tu >= AbyssData.INTERACT_TU:
+			ev.append_array(b.apply({"type": "interact", "unit": a.id}))
+		return true
+	return false
 
 static func _exposure(b: AbyssBattle, p: Vector2i, foes: Array[AbyssUnit]) -> float:
 	var e := 0.0

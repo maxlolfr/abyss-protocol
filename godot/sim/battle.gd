@@ -18,6 +18,7 @@ var terminal := Vector2i(-1, -1)
 var logs_done := false
 var evac: Array[Vector2i] = []
 var map_id := "lab"
+var alarm_turn := -1 # tour où l'artefact a été pris (renforts différés)
 var explored := PackedByteArray() # brouillard de guerre côté joueur (1 = déjà vu)
 
 func _init(seed_value := "abyss", map := "lab") -> void:
@@ -298,7 +299,7 @@ func _check_outcome(ev: Array) -> void:
 		return
 	if living(true).is_empty():
 		outcome = "defeat"
-	elif living(false).is_empty():
+	elif living(false).is_empty() and AbyssData.ELIMINATION_WINS.get(map_id, true):
 		outcome = "victory"
 	if outcome != "ongoing":
 		ev.append({"t": "outcome", "outcome": outcome})
@@ -424,6 +425,7 @@ func apply(cmd: Dictionary) -> Array:
 				last_known[u.id] = u.cell # la pulsation révèle le porteur à tous les aliens
 				ev.append({"t": "pickup", "unit": u.id})
 				ev.append({"t": "alarm"})
+				alarm_turn = turn
 				_reinforce(ev)
 			else:
 				logs_done = true
@@ -467,6 +469,8 @@ func apply(cmd: Dictionary) -> Array:
 func _start_side(s: String, ev: Array) -> void:
 	side = s
 	ev.append({"t": "turn", "side": s, "turn": turn})
+	if s == "alien" and alarm_turn >= 0:
+		_reinforce(ev, turn - alarm_turn + 1) # 1 = juste après le tour de l'alarme
 	for u in living(s == "human"):
 		u.tu = maxi(0, u.max_tu - u.drain)
 		u.drain = 0
@@ -480,17 +484,24 @@ func _start_side(s: String, ev: Array) -> void:
 				ev.append({"t": "death", "unit": u.id})
 	_check_outcome(ev)
 
-## Némésis : l'alarme réveille une Néréide dans le bassin ouest (intensification de la menace avant l'extraction).
-func _reinforce(ev: Array) -> void:
-	if map_id != "nemesis" or units.any(func(x): return x.id == "a4"):
+## L'alarme fait surgir les renforts de la carte (AbyssData.REINFORCEMENTS) : chacun une seule fois,
+## dès que son retard (en tours aliens depuis l'alarme) est écoulé.
+func _reinforce(ev: Array, elapsed := 0) -> void:
+	if alarm_turn < 0:
 		return
-	for p in [Vector2i(1, 7), Vector2i(2, 7), Vector2i(1, 8), Vector2i(2, 8), Vector2i(3, 8)]:
-		if grid.standable(p) and unit_at(p) == null:
-			var r := _make("a4", AbyssData.UNITS["nereide"]["name"], "nereide", p)
-			r.facing = Vector2i(1, 0)
-			units.append(r)
-			ev.append({"t": "spawn", "unit": "a4", "seen": seen_by_humans(r)})
-			return
+	var waves: Array = AbyssData.REINFORCEMENTS.get(map_id, [])
+	for k in waves.size():
+		var id := "r%d" % (k + 1)
+		var kind: String = waves[k][0]
+		if elapsed < int(waves[k][2]) or units.any(func(x): return x.id == id):
+			continue
+		for p in waves[k][1]:
+			if grid.standable(p) and unit_at(p) == null:
+				var r := _make(id, AbyssData.UNITS[kind]["name"], kind, p)
+				r.facing = Vector2i(1, 0) if p.x < grid.w / 2 else Vector2i(-1, 0)
+				units.append(r)
+				ev.append({"t": "spawn", "unit": id, "seen": seen_by_humans(r), "side": "west" if p.x < grid.w / 2 else "east"})
+				break
 
 ## Sauvegarde complète (JSON), RNG comprise : la partie reprend à l'identique.
 func to_dict() -> Dictionary:
@@ -503,7 +514,7 @@ func to_dict() -> Dictionary:
 	var walls := {}
 	for k in grid.wall_hp:
 		walls[str(k)] = grid.wall_hp[k]
-	return {"version": 1, "map": map_id, "seed": seed_text, "rng": str(rng.state), "turn": turn, "side": side, "outcome": outcome, "alert": alert,
+	return {"version": 1, "map": map_id, "seed": seed_text, "rng": str(rng.state), "turn": turn, "side": side, "outcome": outcome, "alert": alert, "alarm_turn": alarm_turn,
 		"last_known": lk, "artifact": [artifact.x, artifact.y], "logs_done": logs_done, "tiles": Array(grid.tiles), "walls": walls,
 		"explored": Array(explored), "units": us}
 
@@ -513,6 +524,7 @@ static func from_dict(d: Dictionary) -> AbyssBattle:
 	var b := AbyssBattle.new(String(d["seed"]), String(d.get("map", "lab")))
 	b.rng.state = int(String(d["rng"]))
 	b.turn = int(d["turn"]); b.side = d["side"]; b.outcome = d["outcome"]; b.alert = d["alert"]; b.logs_done = d["logs_done"]
+	b.alarm_turn = int(d.get("alarm_turn", -1))
 	b.artifact = Vector2i(int(d["artifact"][0]), int(d["artifact"][1]))
 	b.last_known = {}
 	for id in d["last_known"]:

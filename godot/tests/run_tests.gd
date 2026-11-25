@@ -127,8 +127,10 @@ func _init() -> void:
 	var car := rf.unit("s1")
 	car.cell = rf.artifact + Vector2i(1, 0)
 	var evr := rf.apply({"type": "interact", "unit": "s1"})
-	check(evr.any(func(x): return x["t"] == "spawn") and rf.living(false).size() == 4, "Némésis : renfort à l'alarme")
-	check(AbyssBattle.from_dict(JSON.parse_string(JSON.stringify(rf.to_dict()))).living(false).size() == 4, "Némésis : le renfort est sauvegardé")
+	check(evr.any(func(x): return x["t"] == "spawn") and rf.living(false).size() == 4, "Némésis : premier renfort à l'alarme")
+	rf.apply({"type": "end_turn"})
+	check(rf.units.any(func(x): return x.id == "r2"), "Némésis : second renfort au tour suivant")
+	check(AbyssBattle.from_dict(JSON.parse_string(JSON.stringify(rf.to_dict()))).units.size() == rf.units.size(), "Némésis : les renforts sont sauvegardés")
 	var nwins := 0
 	var nends := 0
 	for i in 12:

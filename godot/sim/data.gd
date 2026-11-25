@@ -95,3 +95,17 @@ const NEMESIS := [
 ]
 
 const MAPS := {"lab": LAB, "nemesis": NEMESIS}
+
+## Éliminer tous les hostiles suffit-il ? Non sur Némésis : seule l'extraction de l'artefact compte
+## (la cuve contaminée réveille des renforts à la prise).
+const ELIMINATION_WINS := {"lab": true, "nemesis": false}
+
+## Renforts déclenchés par l'alarme (prise de l'artefact) : [type, cases possibles par ordre de préférence,
+## retard (0 = à l'alarme, 1 = au début du tour alien qui suit)].
+## Ils coupent la retraite vers le sas : bassin ouest et bassin est.
+const REINFORCEMENTS := {
+	"nemesis": [
+		["nereide", [Vector2i(1, 7), Vector2i(2, 7), Vector2i(1, 8), Vector2i(2, 8), Vector2i(3, 8)], 0],
+		["nereide", [Vector2i(13, 8), Vector2i(14, 8), Vector2i(12, 8), Vector2i(12, 7)], 2],
+	],
+}

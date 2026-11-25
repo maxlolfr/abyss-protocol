@@ -1202,7 +1202,7 @@ func _play(events: Array) -> void:
 				_build_unit(su)
 				var sn: Node3D = unit_nodes[su.id]
 				sn.visible = e["seen"]
-				hud.flash("Mouvement dans le bassin ouest : renfort hostile !", AbyssHud.RED)
+				hud.flash("Mouvement dans le bassin %s : renfort hostile !" % ("ouest" if e.get("side", "west") == "west" else "est"), AbyssHud.RED)
 				audio.sfx("nereid_alert", null, -4.0, 0.85)
 				AbyssFx.burst(self, _cell_pos(su.cell) + Vector3(0, 0.2, 0), "splat", Color(0.5, 0.75, 0.9, 0.8), 18, 3.0, 0.7, 0.25, true, Vector3(0, -7, 0))
 			"logs":

@@ -141,6 +141,7 @@ func show_briefing() -> void:
 	_label(v, "Laboratoire de confinement englouti. Une cuve centrale abrite l'artefact Némésis ; la station ne répond plus et des signatures non humaines ont été relevées.", 14, DIM)
 	_label(v, "OBJECTIFS", 15, AMBER)
 	_label(v, "• Principal : récupérer l'artefact dans sa cuve et l'évacuer par le sas.\n• Secondaire : télécharger le journal du terminal (mezzanine est).", 14, TEXT)
+	_label(v, "Éliminer les hostiles ne suffit pas : la prise de l'artefact déclenche l'alarme et réveille des renforts dans les bassins, par vagues.", 12, Color(1.0, 0.55, 0.45))
 	_label(v, "HOSTILES DÉTECTÉS", 15, AMBER)
 	var hz := HBoxContainer.new()
 	hz.add_theme_constant_override("separation", 10)
