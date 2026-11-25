@@ -120,6 +120,10 @@ func _combat_audio() -> void:
 	if not combat_music:
 		combat_music = true
 		audio.music("mus_03_contact_hostile", 1.5)
+	for u in battle.living(true):
+		var b: Node = unit_nodes[u.id].get_node_or_null("Body")
+		if b and b.has_method("set_stance"):
+			b.set_stance("aim") # posture de combat (si la planche de poses existe)
 
 func _where(u: AbyssUnit) -> Variant:
 	return unit_nodes[u.id].global_position + Vector3(0, 1, 0) if _visible(u) else null
