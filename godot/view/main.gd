@@ -505,6 +505,9 @@ func _on_setting(key: String, v: Variant) -> void:
 		"quality":
 			_apply_quality(v)
 		"sound": audio.set_enabled(v)
+		"vol_Music", "vol_SFX", "vol_Ambience":
+			var bi := AudioServer.get_bus_index(String(key).substr(4))
+			AudioServer.set_bus_volume_db(bi, AbyssAudio.BUSES[String(key).substr(4)] + linear_to_db(maxf(float(v), 0.001)))
 
 ## Niveaux de qualité. Haute : tout ; Moyenne (défaut sur téléphone) : rendu 3D à 65 % de la résolution native
 ## (les écrans mobiles sont à 3x) ; Basse : 45 %, sans ombres, sans halo, sans lampes frontales ni neige marine.
@@ -605,6 +608,8 @@ func _tap(pos: Vector2) -> void:
 			hud.set_preview("%s : %s" % [label, info["error"]], false)
 			return
 		pending = {"cell": c, "cmd": {"type": "shoot", "unit": selected.id, "target": u.id, "mode": m}}
+		var hc: Color = Color("52c99a") if info["chance"] >= 50 else (AbyssHud.AMBER if info["chance"] >= 25 else AbyssHud.RED)
+		_dest_marker(u.cell, "%d %%" % info["chance"], hc, "%d UT" % info["cost"])
 		hud.set_preview("%s · %d UT · %d %% · couvert %s · reste %d UT" % [label, info["cost"], info["chance"], ["aucun", "partiel", "total"][info["cover"]], selected.tu - info["cost"]], true)
 		return
 	if mode == "throw":
@@ -642,6 +647,7 @@ func _tap(pos: Vector2) -> void:
 			reactors += 1
 		cov = maxi(cov, battle.grid.cover_against(c, e.cell))
 	_cover_marks(c)
+	_dest_marker(c, "%d UT" % cost, Color("e4edf5") if not reactors else AbyssHud.AMBER, ("⚠ %d tir(s) de réaction" % reactors) if reactors else "")
 	pending = {"cell": c, "cmd": {"type": "move", "unit": selected.id, "to": c}}
 	hud.set_preview("Déplacement · %d UT · reste %d · %s · couvert %s%s" % [cost, selected.tu - cost, "en hauteur" if battle.grid.z(c) >= 1 else "au sol",
 		["aucun", "partiel", "total"][cov], (" · %d réaction(s) possible(s)" % reactors) if reactors else ""], true)
@@ -726,6 +732,28 @@ func _show_reach() -> void:
 				continue # le bord d'un mur ou d'un couvert se lit déjà dans le décor
 			var e := _mesh(overlay, edge_z if d.x else edge_x, _cell_pos(p) + Vector3(d.x * 0.47, 0.02, d.y * 0.47), _mat("reachEdge%s" % ok, col, 0, 1, col * 0.25, 0.55))
 			e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## Destination ou cible : coins de visée fins (UI-114) + étiquette lisible (coût UT, % de toucher).
+func _dest_marker(c: Vector2i, text: String, col: Color, sub := "") -> void:
+	var at := _cell_pos(c)
+	var m := _mat("dest%s" % col.to_html(), col, 0, 1, col * 0.6, 0.95)
+	for sx in [-1, 1]:
+		for sz in [-1, 1]:
+			var a := _box(overlay, Vector3(0.22, 0.01, 0.03), at + Vector3(sx * 0.36, 0.03, sz * 0.46), m)
+			a.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var b := _box(overlay, Vector3(0.03, 0.01, 0.22), at + Vector3(sx * 0.46, 0.03, sz * 0.36), m)
+			b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var l := Label3D.new()
+	l.text = text if sub == "" else "%s\n%s" % [text, sub]
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.font_size = 44
+	l.pixel_size = 0.0065
+	l.outline_size = 10
+	l.outline_modulate = Color(0.02, 0.04, 0.06, 0.9)
+	l.modulate = col
+	l.position = at + Vector3(0, 0.55, 0)
+	overlay.add_child(l)
 
 ## Boucliers de couverture autour de la case visée (cyan = total, ambre = partiel).
 func _cover_marks(c: Vector2i) -> void:
@@ -1017,6 +1045,19 @@ func _play(events: Array) -> void:
 				hud.flash("Contact sonar : %s" % u.name, AbyssHud.RED)
 				audio.sfx("nereid_alert" if u.kind == "nereide" else "sonar_signature", null, -2.0)
 				_combat_audio()
+				if not _story.has("contact_" + u.kind) and speed <= 1.0:
+					# présentation de la créature au premier contact (zoom court, fiche, retour)
+					_story["contact_" + u.kind] = true
+					var desc: String = {"nereide": "NÉRÉIDE · éclaireuse amphibie, rapide, attaque de flanc",
+						"carapace": "CARAPACE · crustacé lourd blindé, jet d'acide à courte portée",
+						"spectre": "SPECTRE · entité psionique, ignore les couverts, désoriente"}.get(u.kind, u.name)
+					var keep := cam.size
+					var tw := create_tween().set_parallel()
+					tw.tween_property(pivot, "position", Vector3(u.cell.x + 0.5, 0, u.cell.y + 0.5), 0.35).set_trans(Tween.TRANS_SINE)
+					tw.tween_property(cam, "size", 4.2, 0.35).set_trans(Tween.TRANS_SINE)
+					hud.flash(desc, AbyssHud.RED)
+					await get_tree().create_timer(1.4).timeout
+					create_tween().tween_property(cam, "size", keep, 0.4).set_trans(Tween.TRANS_SINE)
 				if battle.side != "human":
 					create_tween().tween_property(pivot, "position", Vector3(u.cell.x + 0.5, 0, u.cell.y + 0.5), 0.3 / speed)
 				await _wait(0.35)
@@ -1156,6 +1197,14 @@ func _play(events: Array) -> void:
 				_combat_audio()
 				_flash_light(_cell_pos(battle.unit(events.filter(func(x): return x["t"] == "pickup")[0]["unit"]).cell) + Vector3(0, 1, 0), Color("39d9ef"), 14.0, 6.0, 1.2)
 				await _wait(0.6)
+			"spawn":
+				var su := battle.unit(e["unit"])
+				_build_unit(su)
+				var sn: Node3D = unit_nodes[su.id]
+				sn.visible = e["seen"]
+				hud.flash("Mouvement dans le bassin ouest : renfort hostile !", AbyssHud.RED)
+				audio.sfx("nereid_alert", null, -4.0, 0.85)
+				AbyssFx.burst(self, _cell_pos(su.cell) + Vector3(0, 0.2, 0), "splat", Color(0.5, 0.75, 0.9, 0.8), 18, 3.0, 0.7, 0.25, true, Vector3(0, -7, 0))
 			"logs":
 				hud.flash("Journal du terminal téléchargé", AbyssHud.GREEN)
 				audio.sfx("sonar_signature", null, -6.0, 1.2)
@@ -1168,6 +1217,14 @@ func _play(events: Array) -> void:
 				_refresh_hud()
 			"evacuate":
 				audio.sfx("airlock", null, -2.0)
+				# extraction : la caméra se resserre sur le sas
+				var ev_at := Vector3.ZERO
+				for p in battle.evac:
+					ev_at += _cell_pos(p)
+				ev_at /= maxf(1.0, battle.evac.size())
+				var tw2 := create_tween().set_parallel()
+				tw2.tween_property(pivot, "position", Vector3(ev_at.x, 0, ev_at.z), 0.6).set_trans(Tween.TRANS_SINE)
+				tw2.tween_property(cam, "size", 5.5, 0.6).set_trans(Tween.TRANS_SINE)
 				for id in e["units"]:
 					var n: Node3D = unit_nodes[id]
 					create_tween().tween_property(n, "position:y", n.position.y + 3.0, 0.6)

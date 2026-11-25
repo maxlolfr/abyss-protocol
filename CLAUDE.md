@@ -18,6 +18,12 @@ Vision : `docs/MASTER_GDD.md`, `docs/ART_DIRECTION.md`, `docs/CLAUDE_START.md`. 
 ## Mission Némésis (en cours depuis le 25/11, 11 h)
 Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA V3.1, autonomie technique, pas de campagne avant validation, dépôt studio jamais public. Journal et décisions : `docs/NEMESIS.md`. Images rangées : PR #25 du studio (63 références, aucun personnage).
 
+## Reprise (fenêtre suivante) — état au 25/11 18 h
+- PR ouvertes, **non fusionnées** (validation de Max/ChatGPT) : #5 (refonte V1 + son) et la PR de phase 2 (branche `claude-b/phase2`, contient #5). Studio : PR #27 (audio, créatures, interface HD).
+- Ressources toutes reçues et rangées (zips renvoyés à 17 h 31 = doublons sauf PROP-001 à 004). Planches à demander : `docs/PLANCHES-MANQUANTES.md`.
+- Format de réponse demandé par Max : barre 🟩⬜ + % + coût estimé en tokens + temps estimé, à chaque message ; prévenir quand la fenêtre devient trop longue.
+- Outils locaux : Godot 4.7.2 dans /home/claude/bin (à retélécharger), captures `tests/shot.gd`, `tests/fxshot.gd`, `tests/lineup.gd`, partie auto `tests/play_smoke.gd`.
+
 ## Prochaines étapes probables
 1. Suite de `docs/NEMESIS.md` : N1 à N4 faits (N4 = refonte visuelle avec les sprites des planches de Max, interface, performance). Inventaire des ressources : `Game-studio-ai/docs/studio/art/abyss-protocol/ASSET_INVENTORY.md`. Max a autorisé (25/11 15 h 36) la publication des versions allégées de ses créations dans le jeu public, jamais les originaux, zips, planches complètes ni prompts.
 2. Équilibrage Godot (l'escouade gagne trop en IA contre IA), Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).

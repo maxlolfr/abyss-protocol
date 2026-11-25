@@ -98,7 +98,7 @@ func _ready() -> void:
 	menu.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	menu.position = Vector2(-230 - margin, 58)
 	menu.custom_minimum_size = Vector2(230, 0)
-	menu.add_theme_stylebox_override("panel", _box(Color(0.03, 0.07, 0.1, 0.94), CYAN))
+	menu.add_theme_stylebox_override("panel", frame())
 	menu.visible = false
 	root.add_child(menu)
 	var mv := VBoxContainer.new()
@@ -110,6 +110,16 @@ func _ready() -> void:
 		c.add_theme_font_size_override("font_size", 14)
 		c.toggled.connect(func(on): _settings[s[0]] = on; setting.emit(s[0], on))
 		mv.add_child(c)
+	for vs in [["vol_Music", "Musique"], ["vol_SFX", "Effets"], ["vol_Ambience", "Ambiance"]]:
+		var row := HBoxContainer.new()
+		mv.add_child(row)
+		var vl := _label(row, vs[1], 15, TEXT)
+		vl.custom_minimum_size = Vector2(78, 0)
+		var sl := HSlider.new()
+		sl.min_value = 0.0; sl.max_value = 1.0; sl.step = 0.05; sl.value = 1.0
+		sl.custom_minimum_size = Vector2(130, 30)
+		sl.value_changed.connect(func(val): setting.emit(vs[0], val))
+		row.add_child(sl)
 	quality_btn = _button(mv, "Qualité : haute", func(): pass, 14)
 	quality_btn.pressed.connect(func():
 		var q: String = {"haute": "moyenne", "moyenne": "basse", "basse": "haute"}[_settings["quality"]]
@@ -177,7 +187,7 @@ func _ready() -> void:
 	end_panel.set_anchors_preset(Control.PRESET_CENTER)
 	end_panel.position = Vector2(-210, -100)
 	end_panel.custom_minimum_size = Vector2(420, 190)
-	end_panel.add_theme_stylebox_override("panel", _box(Color(0.02, 0.05, 0.08, 0.95), CYAN))
+	end_panel.add_theme_stylebox_override("panel", frame())
 	end_panel.visible = false
 	root.add_child(end_panel)
 	var ev := VBoxContainer.new()
@@ -192,6 +202,25 @@ func _process(delta: float) -> void:
 	if _toast_t > 0.0:
 		_toast_t -= delta
 		toast.modulate.a = clampf(_toast_t, 0.0, 1.0)
+
+## Habillage de l'interface (phase 2) : cadres et boutons découpés de la planche UI-114 HD de Max,
+## police Rajdhani (licence OFL), palette anthracite / cyan désaturé / orange tactique / rouge d'alerte.
+const KIT := "res://assets/ui/kit/%s.png"
+static var _sb := {}
+
+static func tex_box(name: String, m := Vector4(14, 12, 14, 12), pad := Vector4(10, 6, 10, 6)) -> StyleBoxTexture:
+	var key := name + str(m) + str(pad)
+	if _sb.has(key):
+		return _sb[key]
+	var sb := StyleBoxTexture.new()
+	sb.texture = load(KIT % name)
+	sb.texture_margin_left = m.x; sb.texture_margin_top = m.y; sb.texture_margin_right = m.z; sb.texture_margin_bottom = m.w
+	sb.content_margin_left = pad.x; sb.content_margin_top = pad.y; sb.content_margin_right = pad.z; sb.content_margin_bottom = pad.w
+	_sb[key] = sb
+	return sb
+
+static func frame() -> StyleBoxTexture:
+	return tex_box("panel2", Vector4(34, 30, 34, 30), Vector4(14, 10, 14, 10))
 
 func _panel(parent: Control) -> PanelContainer:
 	var p := PanelContainer.new()
@@ -223,10 +252,13 @@ func _button(parent: Node, text: String, cb: Callable, size := 13) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", size)
 	b.add_theme_color_override("font_color", TEXT)
-	b.add_theme_stylebox_override("normal", _box(Color(0.04, 0.1, 0.15, 0.88), Color(0.22, 0.85, 0.94, 0.4)))
-	b.add_theme_stylebox_override("hover", _box(Color(0.06, 0.15, 0.2, 0.92), CYAN))
-	b.add_theme_stylebox_override("pressed", _box(Color(0.08, 0.22, 0.28, 0.95), CYAN))
-	b.add_theme_stylebox_override("disabled", _box(Color(0.03, 0.05, 0.07, 0.75), Color(0.3, 0.35, 0.4, 0.3)))
+	b.add_theme_stylebox_override("normal", tex_box("btn_secondary"))
+	b.add_theme_stylebox_override("hover", tex_box("btn_primary"))
+	b.add_theme_stylebox_override("pressed", tex_box("btn_primary"))
+	b.add_theme_stylebox_override("disabled", tex_box("btn_disabled"))
+	b.add_theme_color_override("font_disabled_color", Color(0.45, 0.5, 0.55))
+	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	b.add_theme_constant_override("outline_size", 3)
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(cb)
 	parent.add_child(b)
@@ -288,15 +320,18 @@ func refresh(b: AbyssBattle, sel: AbyssUnit, mode: String, busy: bool) -> void:
 		btn.text = "%s %d" % [spec[m][0], spec[m][1]] if m != "evac" else ("Évacuer (%d)" % split["staying"].size() if split["staying"].size() else "Évacuer")
 		btn.disabled = not ready or (sel != null and sel.tu < spec[m][1])
 		btn.add_theme_color_override("font_color", AMBER if mode == m or m in ["interact", "evac"] else TEXT)
-	actions["end"].text = "Fin du\ntour"
+		btn.add_theme_stylebox_override("normal", tex_box("btn_orange" if mode == m else ("btn_green" if m in ["interact", "evac"] else "btn_secondary")))
+	actions["end"].text = "FIN DU\nTOUR"
+	actions["end"].add_theme_stylebox_override("normal", tex_box("btn_orange"))
+	actions["end"].add_theme_color_override("font_color", AMBER)
 	actions["end"].disabled = busy or b.side != "human" or b.outcome != "ongoing"
 
 func show_end(b: AbyssBattle) -> void:
 	var carried := b.units.any(func(u): return u.carrying and u.evacuated)
 	var title := "VICTOIRE" if b.outcome == "victory" else ("RETRAITE" if b.units.any(func(u): return u.evacuated) else "ÉCHEC")
-	end_lbl.text = "%s\nArtefact : %s · Journal : %s\nTours : %d · Hostiles neutralisés : %d/3 · Soldats perdus : %d" % [
+	end_lbl.text = "%s\nArtefact : %s · Journal : %s\nTours : %d · Hostiles neutralisés : %d/%d · Soldats perdus : %d" % [
 		title, "récupéré" if carried or (b.outcome == "victory" and b.living(false).is_empty()) else "perdu", "oui" if b.logs_done else "non",
-		b.turn, 3 - b.living(false).size(), b.units.filter(func(u): return u.human and not u.alive).size()]
+		b.turn, b.units.filter(func(x): return not x.human).size() - b.living(false).size(), b.units.filter(func(x): return not x.human).size(), b.units.filter(func(u): return u.human and not u.alive).size()]
 	if carried and not end_panel.has_meta("research"):
 		end_panel.set_meta("research", true)
 		var card := TextureRect.new() # fiche de recherche RES-001 débloquée

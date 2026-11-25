@@ -39,6 +39,14 @@ Références : 63 images privées dans le studio (`Game-studio-ai/docs/studio/ar
   - Unités : ombre de contact, sprites éclaircis, anneau de sélection fin ; cloisons et couverts translucides quand ils cachent une unité.
   - Récit : arrivée (silence radio), contamination découverte, contact, extraction sous alarme.
   - **Limites** : les planches de personnages sont en pose neutre (bras le long du corps) : pas d'arme en main, pas de vraie génuflexion ni de pose de tir sans planches de poses (ou modèles 3D). Pas d'aperçu Web sans fusion (GitHub Pages ne publie que `main`).
+- **Phase 2** (directive du 25/11 17 h 28, branche `claude-b/phase2`, part de la refonte V1, non fusionnée ; sauvegarde de `main` : branche `claude-b/sauvegarde-avant-phase2`) :
+  - Personnages : armes découpées de WEAPONS-001 tenues en main et orientées selon la vue (AR-9 Walker, lanceur lourd Okafor, SR-9 Lind, PX-3 Moreau) ; la sortie du tir suit la bouche de l'arme ; génuflexion sans déformation ; système de poses prêt (`<jeu>_<pose>_<vue>.png`, voir `docs/PLANCHES-MANQUANTES.md`) ; posture de combat activée au premier contact. Carapace en sprites tirés de BIO-109 (remplaçant).
+  - Décor : PROP-001 à 004 (console, capsule, armoire électrique, réservoir) contre les parois.
+  - Grille : coins de visée sur la destination et la cible, coût UT et % de toucher affichés sur place, alerte de tirs de réaction.
+  - Interface : boutons et cadres découpés de UI-114 HD, police Rajdhani (OFL), action choisie en orange, objectifs/évacuation en vert, fin de tour orange ; volumes Musique / Effets / Ambiance séparés.
+  - Caméra : présentation de chaque créature au premier contact (zoom + fiche), resserrement sur le sas à l'extraction.
+  - Mission : renfort de Néréide à l'alarme (intensification avant l'extraction), compte des hostiles juste. 39 tests.
+  - Équilibre mesuré (40 parties IA contre IA) : 33 victoires, 3,9 tours, 1,4 soldat perdu. Encore trop facile pour l'IA ; à régler avec les essais de Max.
 - N5 (prévu) — mesures de Max, équilibrage, états de destruction intermédiaires, icônes d'état (UI-113), Carapace dès sa planche.
 
 ## Vérifier
