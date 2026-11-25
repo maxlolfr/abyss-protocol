@@ -153,7 +153,7 @@ func _ready() -> void:
 		row.add_child(sl)
 	quality_btn = _button(mv, "Qualité : haute", func(): pass, 14)
 	quality_btn.pressed.connect(func():
-		var q: String = {"haute": "moyenne", "moyenne": "basse", "basse": "haute"}[_settings["quality"]]
+		var q: String = {"haute": "moyenne", "moyenne": "basse", "basse": "allégée", "allégée": "haute"}[_settings["quality"]]
 		set_quality(q)
 		setting.emit("quality", q))
 	var sp := _button(mv, "Vitesse ennemie : x1", func(): pass, 14)
