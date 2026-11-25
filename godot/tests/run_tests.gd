@@ -122,6 +122,13 @@ func _init() -> void:
 	check(rr["cost"].has(nm.grid.idx(nm.terminal + Vector2i(1, 0))), "Némésis : le terminal de la mezzanine est accessible par l'escalier")
 	check(rr["cost"].has(nm.grid.idx(Vector2i(2, 2))), "Némésis : la mezzanine ouest est accessible")
 	check(AbyssBattle.from_dict(JSON.parse_string(JSON.stringify(nm.to_dict()))).map_id == "nemesis", "Némésis : la sauvegarde garde la carte")
+	# Némésis : l'alarme fait surgir une Néréide de renfort
+	var rf := AbyssBattle.new("renfort", "nemesis")
+	var car := rf.unit("s1")
+	car.cell = rf.artifact + Vector2i(1, 0)
+	var evr := rf.apply({"type": "interact", "unit": "s1"})
+	check(evr.any(func(x): return x["t"] == "spawn") and rf.living(false).size() == 4, "Némésis : renfort à l'alarme")
+	check(AbyssBattle.from_dict(JSON.parse_string(JSON.stringify(rf.to_dict()))).living(false).size() == 4, "Némésis : le renfort est sauvegardé")
 	var nwins := 0
 	var nends := 0
 	for i in 12:

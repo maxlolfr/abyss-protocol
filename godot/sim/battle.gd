@@ -424,6 +424,7 @@ func apply(cmd: Dictionary) -> Array:
 				last_known[u.id] = u.cell # la pulsation révèle le porteur à tous les aliens
 				ev.append({"t": "pickup", "unit": u.id})
 				ev.append({"t": "alarm"})
+				_reinforce(ev)
 			else:
 				logs_done = true
 				ev.append({"t": "logs", "unit": u.id})
@@ -478,6 +479,18 @@ func _start_side(s: String, ev: Array) -> void:
 				u.hp = 0
 				ev.append({"t": "death", "unit": u.id})
 	_check_outcome(ev)
+
+## Némésis : l'alarme réveille une Néréide dans le bassin ouest (intensification de la menace avant l'extraction).
+func _reinforce(ev: Array) -> void:
+	if map_id != "nemesis" or units.any(func(x): return x.id == "a4"):
+		return
+	for p in [Vector2i(1, 7), Vector2i(2, 7), Vector2i(1, 8), Vector2i(2, 8), Vector2i(3, 8)]:
+		if grid.standable(p) and unit_at(p) == null:
+			var r := _make("a4", AbyssData.UNITS["nereide"]["name"], "nereide", p)
+			r.facing = Vector2i(1, 0)
+			units.append(r)
+			ev.append({"t": "spawn", "unit": "a4", "seen": seen_by_humans(r)})
+			return
 
 ## Sauvegarde complète (JSON), RNG comprise : la partie reprend à l'identique.
 func to_dict() -> Dictionary:

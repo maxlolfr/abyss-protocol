@@ -30,6 +30,23 @@ Références : 63 images privées dans le studio (`Game-studio-ai/docs/studio/ar
   - **Grille** : plus de cases pleines lumineuses ; voile à 7 % + contour fin de la zone (cyan = assez d'UT pour tirer, ambre = marche seule) ; sol plus sombre.
   - **Interface** : écran titre (ENV-001), briefing (ENV-007, objectifs, fiches Néréide / Spectre / Carapace, escouade), écran de démarrage (ENV-002), portraits et barres PV/UT dans l'escouade, boutons d'action plus grands à icônes, fiche de recherche RES-001 au débriefing.
   - **Performance** (mesurée hors téléphone, même vue de la salle entière) : appels de rendu par image **5 236 → 573** (qualité haute) / **414** (basse). Causes trouvées : ombres des lampes frontales et d'une lumière d'ambiance (chacune redessine toute la scène), une pièce = un objet par case. Corrigé : ombres réservées à la lumière principale, sols / passerelles / coque / garde-corps / brouillard regroupés (MultiMesh). Niveaux de qualité (Menu) : haute, moyenne (défaut sur téléphone : rendu 3D à 65 % de la résolution native), basse (45 %, sans ombres ni halo). **Les i/s sur téléphone restent à mesurer par Max.**
+- **Audio lot 01** (branche `claude-b/audio-lot1`, inclus dans la refonte V1) : `view/audio.gd`, bus Music/Ambience/SFX/UI, thème au titre, exploration puis combat au premier contact ou à l'alarme (fondu 1,5 s), ambiance du labo en boucle, 12 bruitages branchés sur les événements réels (pas, tirs par arme, impacts, explosion, sas, artefact, contacts). Ennemis cachés : sons non positionnés. Interrupteur « Son et musique » dans le Menu. Bruitages convertis en OGG : 2,4 Mo → 0,28 Mo. Contrôle automatique : partie complète, sons déclenchés comptés.
+- **Refonte visuelle V1** (directive DA du 25/11, branche `claude-b/visual-overhaul-v1`, non fusionnée) :
+  - Sol : dalles d'acier de tailles inégales projetées dans le repère du monde, joints qui ne suivent plus la grille ; plus de joint par case ; bandes de danger seulement au pourtour du sas ; eau sombre.
+  - Grille : voile 4,5 %, contour 2 cm sans halo, jamais le long des murs et couverts.
+  - Lumière (`view/dressing.gd`) : ambiance acier neutre, plafonniers chauds et blancs, mezzanines froides, contamination violette pulsée, néon qui grésille, alarme rouge à l'extraction ; « flaques » de lumière au sol (gratuites) plutôt que des lumières réelles (chacune coûte une passe en WebGL). Lampes frontales adoucies.
+  - Habillage : 26 objets de plus tirés des planches (49 au total) adossés aux parois (cuves, baies, générateurs, machines, structures aliennes à l'ouest), masqués avec la coupe caméra ; vapeur, poussière en suspension, fuite d'eau, console cassée à étincelles.
+  - Unités : ombre de contact, sprites éclaircis, anneau de sélection fin ; cloisons et couverts translucides quand ils cachent une unité.
+  - Récit : arrivée (silence radio), contamination découverte, contact, extraction sous alarme.
+  - **Limites** : les planches de personnages sont en pose neutre (bras le long du corps) : pas d'arme en main, pas de vraie génuflexion ni de pose de tir sans planches de poses (ou modèles 3D). Pas d'aperçu Web sans fusion (GitHub Pages ne publie que `main`).
+- **Phase 2** (directive du 25/11 17 h 28, branche `claude-b/phase2`, part de la refonte V1, non fusionnée ; sauvegarde de `main` : branche `claude-b/sauvegarde-avant-phase2`) :
+  - Personnages : armes découpées de WEAPONS-001 tenues en main et orientées selon la vue (AR-9 Walker, lanceur lourd Okafor, SR-9 Lind, PX-3 Moreau) ; la sortie du tir suit la bouche de l'arme ; génuflexion sans déformation ; système de poses prêt (`<jeu>_<pose>_<vue>.png`, voir `docs/PLANCHES-MANQUANTES.md`) ; posture de combat activée au premier contact. Carapace en sprites tirés de BIO-109 (remplaçant).
+  - Décor : PROP-001 à 004 (console, capsule, armoire électrique, réservoir) contre les parois.
+  - Grille : coins de visée sur la destination et la cible, coût UT et % de toucher affichés sur place, alerte de tirs de réaction.
+  - Interface : boutons et cadres découpés de UI-114 HD, police Rajdhani (OFL), action choisie en orange, objectifs/évacuation en vert, fin de tour orange ; volumes Musique / Effets / Ambiance séparés.
+  - Caméra : présentation de chaque créature au premier contact (zoom + fiche), resserrement sur le sas à l'extraction.
+  - Mission : renfort de Néréide à l'alarme (intensification avant l'extraction), compte des hostiles juste. 39 tests.
+  - Équilibre mesuré (40 parties IA contre IA) : 33 victoires, 3,9 tours, 1,4 soldat perdu. Encore trop facile pour l'IA ; à régler avec les essais de Max.
 - N5 (prévu) — mesures de Max, équilibrage, états de destruction intermédiaires, icônes d'état (UI-113), Carapace dès sa planche.
 
 ## Vérifier
