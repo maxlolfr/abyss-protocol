@@ -64,6 +64,8 @@ jobs:
         run: timeout 600 godot --headless --path . -s res://tests/run_tests.gd
       - name: Tests de campagne (géoscape, base, soldats)
         run: timeout 600 godot --headless --path . -s res://tests/strategy_tests.gd
+      - name: Tests du branchement des modèles 3D (ModelKit)
+        run: timeout 300 godot --headless --path . -s res://tests/model_kit_test.gd
       - name: Export Web
         run: |
           mkdir -p build

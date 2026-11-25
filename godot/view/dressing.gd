@@ -57,8 +57,10 @@ func build(m: Node) -> void:
 			var alien := nem and x <= 3 and y >= 4 and y <= 9
 			var list: Array = WALL_ALIEN if alien else {"port": WALL_PORT, "nid": WALL_NID}.get(AbyssKit.theme, WALL_TECH)
 			var pick: Array = list[(x * 5 + y * 3) % list.size()]
-			var sp: Sprite3D = AbyssKit.prop(pick[0], pick[1], true)
+			var sp: Node3D = AbyssKit.prop(pick[0], pick[1], true)
 			sp.position = at
+			if not (sp is Sprite3D): # modèle 3D : face tournée vers la salle
+				sp.rotation.y = atan2(-n.x, -n.z)
 			add_child(sp)
 			decor.append([sp, n])
 			if pick[0] in ["p005_s1", "k007_3", "k007_6"] and steam_spots.size() < 3:
@@ -219,7 +221,7 @@ func _particles(nem: bool, steam_spots: Array[Vector3]) -> void:
 	ambient_fx.append(drip)
 	AbyssFx.puddle(self, Vector3(14.2, 0.0, 8.5), Color(0.35, 0.6, 0.8, 0.45), 1.1, 1e9)
 	# console cassée qui crache des étincelles (est du sas)
-	var wreck: Sprite3D = AbyssKit.prop("k010_4", 1.0, true)
+	var wreck: Node3D = AbyssKit.prop("k010_4", 1.0, true)
 	wreck.position = Vector3(13.5, 0, 12.4)
 	add_child(wreck)
 	decor.append([wreck, Vector3(0, 0, 1)])

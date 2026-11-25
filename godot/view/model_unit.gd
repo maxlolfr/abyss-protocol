@@ -7,11 +7,27 @@ extends Node3D
 
 ## modèle par soldat (id) ou par espèce : [fichier, hauteur en mètres]
 const MODELS := {
+	"s1": ["walker", 1.85],
 	"s2": ["okafor", 1.88],
 	"s3": ["lind", 1.82],
+	"s4": ["moreau", 1.8],
 	"nereide": ["nereide", 1.95],
+	"carapace": ["carapace", 1.7],
+	"spectre": ["spectre", 1.9],
 	"brute": ["brute", 2.3],
 }
+## Arme du jeu -> [modèle (weapons/), longueur en m]. Les créatures gardent leurs armes naturelles.
+const WEAPON_MODELS := {
+	"rifle": ["fusil_assaut", 0.95], "pistol": ["pistolet", 0.32], "harpoon": ["arme_lourde", 1.15],
+	"harpoon_ap": ["arme_lourde", 1.15], "cavitation": ["arme_energie", 1.0],
+}
+## Animations d'un modèle riggé (Tripo auto-rig) : nom du jeu -> mots cherchés dans les noms livrés.
+const RIG_ANIMS := {
+	"idle": ["idle", "stand", "breath"], "walk": ["walk", "run", "move"], "shoot": ["shoot", "fire", "attack", "aim"],
+	"hit": ["hit", "hurt", "damage", "react"], "death": ["death", "die", "dead", "fall"], "kneel": ["kneel", "crouch"],
+}
+var rig: AnimationPlayer = null # animations livrées avec le modèle (squelette), jouées en plus des mouvements d'ensemble
+var hand: Node3D = null # point d'attache de l'arme
 
 var pivot := Node3D.new()
 var height := 1.8
@@ -42,6 +58,7 @@ func _setup(file: String, h: float) -> void:
 			mat.emission = Color.BLACK
 			(mi as MeshInstance3D).material_override = mat
 			_mats.append(mat)
+	_find_rig(m)
 	var head := Node3D.new()
 	head.name = "Head"
 	head.position = Vector3(0, h * 0.9, 0.05)
@@ -104,3 +121,58 @@ func _flash_track(an: Animation, keys: Array) -> void:
 	an.track_set_path(t, NodePath("."))
 	for k in keys:
 		an.track_insert_key(t, k[0], {"method": "flash", "args": [k[1]]})
+
+## Squelette et animations livrés (Tripo auto-rig) : main droite pour l'arme, correspondance des animations.
+func _find_rig(m: Node3D) -> void:
+	var players := m.find_children("*", "AnimationPlayer", true, false)
+	if players.size() > 0 and (players[0] as AnimationPlayer).get_animation_list().size() > 0:
+		rig = players[0]
+	for sk in m.find_children("*", "Skeleton3D", true, false):
+		var skel := sk as Skeleton3D
+		for b in skel.get_bone_count():
+			var n := skel.get_bone_name(b).to_lower()
+			if "hand" in n and ("right" in n or n.ends_with("_r") or n.ends_with(".r") or n.begins_with("r_")):
+				var att := BoneAttachment3D.new()
+				att.bone_name = skel.get_bone_name(b)
+				skel.add_child(att)
+				hand = att
+				return
+
+## Nom de l'animation livrée qui correspond à une animation du jeu, ou "".
+func rig_anim(game: String) -> String:
+	if rig == null:
+		return ""
+	for want in RIG_ANIMS.get(game, [game]):
+		for a in rig.get_animation_list():
+			if want in String(a).to_lower():
+				return a
+	return ""
+
+func _ready() -> void:
+	var ap := get_node_or_null("Anim") as AnimationPlayer
+	if ap and rig:
+		ap.animation_started.connect(func(n: StringName):
+			var r := rig_anim(String(n))
+			if r != "":
+				rig.play(r, 0.15))
+		var r0 := rig_anim("idle")
+		if r0 != "":
+			rig.play(r0)
+
+## Arme tenue (modèle weapons/<nom>.glb s'il a été livré) : dans la main du squelette, sinon à hauteur de hanche ;
+## la sortie du tir (Muzzle) passe au bout du canon.
+func equip(weapon: String) -> void:
+	if not WEAPON_MODELS.has(weapon):
+		return
+	var spec: Array = WEAPON_MODELS[weapon]
+	var w := ModelKit.weapon(spec[0], spec[1])
+	if w == null:
+		return
+	if hand:
+		hand.add_child(w)
+	else:
+		w.position = Vector3(-0.2, height * 0.55, 0.12)
+		pivot.add_child(w)
+	var mz := get_node_or_null("Muzzle") as Node3D
+	if mz and not hand:
+		mz.position = w.position + Vector3(0, 0, spec[1] * 0.55)

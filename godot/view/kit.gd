@@ -312,10 +312,11 @@ static func mesh_of(key: String, make: Callable) -> ArrayMesh:
 static func batch(parent: Node3D, key: String, make: Callable, xforms: Array) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = mesh_of(key, make)
+	var ext := ModelKit.piece(key, theme) # modèle 3D définitif s'il a été livré (docs/MODELES-3D.md)
+	mm.mesh = ext["mesh"] if ext else mesh_of(key, make)
 	mm.instance_count = xforms.size()
 	for i in xforms.size():
-		mm.set_instance_transform(i, xforms[i])
+		mm.set_instance_transform(i, (xforms[i] as Transform3D) * ext["xform"] if ext else xforms[i])
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	parent.add_child(mi)
@@ -323,6 +324,13 @@ static func batch(parent: Node3D, key: String, make: Callable, xforms: Array) ->
 
 ## Instancie une pièce (maillage partagé) ; `make` n'est appelé qu'une fois par clé.
 static func spawn(key: String, make: Callable, parent: Node3D, at: Vector3, yaw := 0.0) -> MeshInstance3D:
+	var ext := ModelKit.piece(key, theme)
+	if ext:
+		var gi := MeshInstance3D.new()
+		gi.mesh = ext["mesh"]
+		gi.transform = Transform3D(Basis(Vector3.UP, yaw), at) * (ext["xform"] as Transform3D)
+		parent.add_child(gi)
+		return gi
 	key = _key(key)
 	if not _meshes.has(key):
 		_meshes[key] = (make.call() as Piece).build()
@@ -606,7 +614,10 @@ static func covers() -> Array:
 	return {"port": COVERS_PORT, "nid": COVERS_NID}.get(theme, COVERS)
 
 ## Objet peint, debout face à la caméra (axe vertical), éclairé par la scène. `height` = hauteur à l'écran (m).
-static func prop(name: String, height: float, shadow := false) -> Sprite3D:
+static func prop(name: String, height: float, shadow := false) -> Node3D:
+	var model := ModelKit.prop_for(name, height, theme) # modèle 3D définitif s'il a été livré
+	if model:
+		return model
 	var t: Texture2D = load(PROP % name)
 	var sp := Sprite3D.new()
 	sp.texture = t
