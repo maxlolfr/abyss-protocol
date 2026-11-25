@@ -139,13 +139,13 @@ func _build_env() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("070d16")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("2a4a60")
-	env.ambient_light_energy = 0.95
+	env.ambient_light_color = Color("23384a")
+	env.ambient_light_energy = 0.6
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.1
+	env.tonemap_exposure = 1.2
 	env.fog_enabled = true
-	env.fog_light_color = Color("0a2232")
-	env.fog_density = 0.012
+	env.fog_light_color = Color("061420")
+	env.fog_density = 0.03
 	env.glow_enabled = true
 	env.glow_intensity = 0.5
 	env.glow_bloom = 0.0
@@ -154,22 +154,23 @@ func _build_env() -> void:
 	we.environment = env
 	add_child(we)
 	# lumière froide filtrée par la surface, ombres dynamiques
-	sun.light_color = Color("a8dcff")
-	sun.light_energy = 0.7
+	sun.light_color = Color("b4d8f0")
+	sun.light_energy = 0.55
 	sun.shadow_enabled = true
 	sun.rotation_degrees = Vector3(-55, 35, 0)
 	add_child(sun)
 	# fond marin : plancher océanique, roches et neige marine hors de la station
 	var w := battle.grid.w
 	var h := battle.grid.h
-	var sea := _box(self, Vector3(80, 0.2, 80), Vector3(w / 2.0, -3.2, h / 2.0), _mat("seabed", Color("0c1c2a"), 0, 1))
+	var sea := _box(self, Vector3(80, 0.2, 80), Vector3(w / 2.0, -3.2, h / 2.0), _mat("seabed", Color("08131d"), 0, 1))
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var rock := _mat("rock", Color("16283a"), 0.1, 0.9)
+	var rock := _mat("rock", Color("0e1a26"), 0.1, 0.9)
 	for i in 14:
 		var a := i * 0.45
 		var r := 13.0 + (i % 4) * 2.5
-		var c := CylinderMesh.new(); c.top_radius = 0.3 + (i % 3) * 0.3; c.bottom_radius = 1.0 + (i % 2); c.height = 2 + (i % 5)
-		_mesh(self, c, Vector3(w / 2.0 + cos(a) * r, -3 + c.height / 2.0, h / 2.0 + sin(a) * r), rock)
+		var c := SphereMesh.new(); c.radius = 1.0 + (i % 3) * 0.5; c.height = c.radius * (1.0 + (i % 4) * 0.4); c.radial_segments = 7; c.rings = 4
+		var rk := _mesh(self, c, Vector3(w / 2.0 + cos(a) * r, -3.2 + c.height * 0.3, h / 2.0 + sin(a) * r), rock)
+		rk.rotation = Vector3(i * 0.3, i * 1.1, i * 0.2)
 	var snow := CPUParticles3D.new()
 	var sm := SphereMesh.new(); sm.radius = 0.02; sm.height = 0.04; sm.radial_segments = 4; sm.rings = 2
 	snow.mesh = sm
@@ -188,22 +189,7 @@ func _build_env() -> void:
 
 func _build_map() -> void:
 	var g := battle.grid
-	var floor_a := _mat("floorA", Color("2e4252"), 0.65, 0.4)
-	var floor_b := _mat("floorB", Color("29394a"), 0.65, 0.45)
-	var evac := _mat("evacFloor", Color("3d3a28"), 0.5, 0.5)
-	var seam := _mat("seam", Color("39d9ef"), 0, 1, Color("1aa8c0"))
-	var plat := _mat("plat", Color("465766"), 0.75, 0.3)
-	var under := _mat("under", Color("141e28"), 0.5, 0.7)
-	var wall := _mat("wall", Color("4a5d6c"), 0.6, 0.45)
-	var hull := _mat("hull", Color("223240"), 0.55, 0.55)
-	var stripe := _mat("stripe", Color("ffb547"), 0, 1, Color("ff9a2a"))
-	stripe.emission_energy_multiplier = 0.5
-	var glass := _mat("glass", Color("1d6a8a"), 0.1, 0.05, Color("0a3a55"), 0.55)
-	var water := _mat("water", Color("0e6a80"), 0.1, 0.05, Color("0a4a60"), 0.7)
-	var crate := _mat("crate", Color("5a4a34"), 0.3, 0.7)
-	var console := _mat("console", Color("2b3c4a"), 0.7, 0.35)
-	var screen := _mat("screen", Color("39d9ef"), 0, 0.2, Color("39d9ef"))
-	var term := _mat("term", Color("52c99a"), 0, 0.2, Color("52c99a"))
+	var K := AbyssKit
 	for y in g.h:
 		for x in g.w:
 			var p := Vector2i(x, y)
@@ -211,38 +197,44 @@ func _build_map() -> void:
 			var z := g.z(p)
 			var c := Vector3(x + 0.5, z, y + 0.5)
 			if t == AbyssGrid.T.HULL:
-				# coque : haute avec une vitre sur l'océan ; abaissée automatiquement côté caméra
+				# coque : haute, hublot sur l'océan un module sur trois ; abaissée automatiquement côté caméra
 				var hn := Node3D.new()
 				hn.position = Vector3(x + 0.5, 0, y + 0.5)
 				add_child(hn)
-				_box(hn, Vector3(1, 2.4, 1), Vector3(0, 1.2, 0), hull)
-				var inner := Vector3(clampi(7 - x, -1, 1) if x == 0 or x == g.w - 1 else 0, 0, clampi(7 - y, -1, 1) if y == 0 or y == g.h - 1 else 0)
-				if (x + y) % 3 == 0 and (x == 0 or y == 0 or x == g.w - 1 or y == g.h - 1):
-					_box(hn, Vector3(0.7 if inner.x == 0 else 1.02, 0.9, 0.7 if inner.z == 0 else 1.02), Vector3(0, 1.4, 0), glass)
-				_box(hn, Vector3(1.01, 0.04, 1.01), Vector3(0, 0.9, 0), _mat("hullTrim", Color("2b3d4c"), 0.8, 0.3))
+				var edge := x == 0 or y == 0 or x == g.w - 1 or y == g.h - 1
+				var win := edge and (x + y) % 3 == 0 and not ((x == 0 or x == g.w - 1) and (y == 0 or y == g.h - 1))
 				var n := Vector3(-1 if x == 0 else (1 if x == g.w - 1 else 0), 0, -1 if y == 0 else (1 if y == g.h - 1 else 0))
+				K.spawn("hull_w" if win else "hull", K.hull.bind(win), hn, Vector3.ZERO, atan2(n.x, n.z))
+				if win and (x + y) % 2 == 0:
+					var beam := K.spawn("beam", K.light_beam, hn, Vector3.ZERO, atan2(-n.x, -n.z))
+					beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				hull_nodes.append([hn, n])
 				continue
+			if t == AbyssGrid.T.STAIRS:
+				# volée continue : de la hauteur du voisin bas à celle du voisin haut
+				var lo := Vector2i.ZERO
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					if g.z(p - d) < z and g.z(p + d) > g.z(p - d):
+						lo = d
+				var z0 := g.z(p - lo)
+				var z1 := minf(z0 + 0.5, 1.0)
+				_track(p, K.spawn("stairs%s" % z0, K.stairs.bind(z0, z1), self, Vector3(c.x, 0, c.z), -atan2(float(lo.y), float(lo.x))))
+				continue
 			if z >= 1.0:
-				_track(p, _box(self, Vector3(1, 1, 1), Vector3(c.x, 0.5, c.z), under))
-			elif t == AbyssGrid.T.STAIRS:
-				_track(p, _box(self, Vector3(1, 0.25, 1), Vector3(c.x, 0.125, c.z), under))
-				_track(p, _box(self, Vector3(0.5, 0.25, 1), Vector3(c.x + 0.25, 0.375, c.z), under))
-			var fm: Material = plat if z >= 1.0 else (evac if battle.in_evac(p) else (floor_a if (x + y) % 2 else floor_b))
-			var f := _box(self, Vector3(0.97, 0.08, 0.97), c - Vector3(0, 0.04, 0), fm)
-			_track(p, f)
-			if (x * 7 + y * 3) % 5 == 0 and z < 1.0 and t != AbyssGrid.T.WATER:
-				_track(p, _box(self, Vector3(0.6, 0.012, 0.04), c + Vector3(0, 0.005, 0), seam)) # balisage lumineux au sol
-			if t == AbyssGrid.T.WATER:
-				f.position.y -= 0.12
-				_track(p, _box(self, Vector3(1, 0.04, 1), c + Vector3(0, 0.02, 0), water))
-			elif t == AbyssGrid.T.WALL:
+				_track(p, K.spawn("deck_high", K.deck_high, self, Vector3(c.x, 0, c.z)))
+			elif t == AbyssGrid.T.WATER:
+				_track(p, K.spawn("pool", K.pool, self, c))
+			else:
+				var ev := battle.in_evac(p)
+				var f := K.spawn("floor_e" if ev else "floor", K.floor_tile.bind(ev), self, c, PI / 2 * ((x * 3 + y) % 4))
+				_track(p, f)
+			if t == AbyssGrid.T.WALL:
+				# orientation : la cloison suit ses voisines
+				var along_x := g.tile(p + Vector2i(1, 0)) in [AbyssGrid.T.WALL, AbyssGrid.T.HULL] or g.tile(p - Vector2i(1, 0)) in [AbyssGrid.T.WALL, AbyssGrid.T.HULL]
 				var n := Node3D.new()
 				n.position = c
 				add_child(n)
-				_box(n, Vector3(1, AbyssData.WALL_H, 1), Vector3(0, AbyssData.WALL_H / 2, 0), wall)
-				_box(n, Vector3(1.01, 0.03, 1.01), Vector3(0, AbyssData.WALL_H * 0.72, 0), stripe)
-				_box(n, Vector3(0.12, AbyssData.WALL_H * 0.6, 1.02), Vector3(0.3, AbyssData.WALL_H * 0.4, 0), _mat("rib", Color("38495a"), 0.8, 0.3))
+				K.spawn("wall", K.wall.bind(AbyssData.WALL_H), n, Vector3.ZERO, 0.0 if along_x else PI / 2)
 				wall_nodes[g.idx(p)] = n
 				_track(p, n)
 			elif t == AbyssGrid.T.LOW:
@@ -250,22 +242,16 @@ func _build_map() -> void:
 				n.position = c
 				add_child(n)
 				if p == battle.terminal:
-					_box(n, Vector3(0.7, 0.75, 0.5), Vector3(0, 0.375, 0), console)
-					var sc := _box(n, Vector3(0.6, 0.35, 0.04), Vector3(0, 0.95, 0), term)
-					sc.rotation_degrees.x = -20
+					K.spawn("terminal", K.console.bind(true), n, Vector3.ZERO, PI)
 					var o := OmniLight3D.new(); o.light_color = Color("52c99a"); o.omni_range = 2.5; o.light_energy = 1.2; o.position = Vector3(0, 1.1, 0.3)
 					n.add_child(o)
 				elif (x + y) % 2:
-					_box(n, Vector3(0.82, 0.7, 0.82), Vector3(0, 0.35, 0), crate)
-					_box(n, Vector3(0.84, 0.06, 0.84), Vector3(0, 0.5, 0), _mat("crateBand", Color("8a6a3a"), 0.4, 0.5))
+					K.spawn("crate", K.crate, n, Vector3.ZERO, PI / 2 * ((x + 2 * y) % 4))
 				else:
-					_box(n, Vector3(0.8, 0.65, 0.55), Vector3(0, 0.33, 0), console)
-					var sc := _box(n, Vector3(0.7, 0.3, 0.04), Vector3(0, 0.78, -0.12), screen)
-					sc.rotation_degrees.x = 15
+					K.spawn("console", K.console.bind(false), n, Vector3.ZERO, PI * ((x + y) / 2 % 2))
 				wall_nodes[g.idx(p)] = n
 				_track(p, n)
-	# rambarde lumineuse au bord de la passerelle (lecture des hauteurs)
-	var rail := _mat("rail", Color("39d9ef"), 0, 1, Color("2ad0ff"))
+	# garde-corps au bord de la passerelle (lecture des hauteurs)
 	for y in g.h:
 		for x in g.w:
 			var p := Vector2i(x, y)
@@ -274,51 +260,51 @@ func _build_map() -> void:
 			for d in [Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0)]:
 				var q: Vector2i = p + d
 				if g.z(q) < 1.0 and g.tile(q) != AbyssGrid.T.STAIRS and g.tile(q) != AbyssGrid.T.HULL:
-					var off := Vector3(d.x * 0.48, 1.25, d.y * 0.48)
-					_track(p, _box(self, Vector3(0.04 if d.x else 1, 0.04, 1 if d.x else 0.04), Vector3(x + 0.5, 0, y + 0.5) + off, rail))
+					_track(p, K.spawn("rail", K.railing, self, Vector3(x + 0.5, 0, y + 0.5), atan2(float(d.x), float(d.y))))
 
 func _build_props() -> void:
-	var g := battle.grid
-	# éclairages : ambre au sas, néons cyan du labo, alarme rouge, contamination violette mesurée
-	for l in [[Vector3(2.5, 2.2, 2.5), Color("ffb547"), 5.0, 1.6, false], [Vector3(5, 2.4, 8.5), Color("39d9ef"), 6.0, 1.3, true],
-			[Vector3(11.5, 2.6, 3), Color("39d9ef"), 6.0, 1.2, false], [Vector3(13.5, 2.0, 8), Color("2ae8ff"), 4.0, 1.4, false],
-			[Vector3(14, 2.2, 12), Color("e5484d"), 4.5, 1.6, false], [Vector3(4, 1.6, 12), Color("9863f5"), 4.5, 1.8, false]]:
+	# éclairages façon ENV-007 : ambre au sas, néons cyan du labo, alarme rouge, contamination violette
+	for l in [[Vector3(2.5, 2.2, 2.5), Color("ffb547"), 5.0, 1.8, false], [Vector3(5, 2.6, 8.5), Color("8fe8ff"), 7.0, 1.3, true],
+			[Vector3(11.5, 2.8, 3), Color("39d9ef"), 6.5, 1.2, false], [Vector3(13.5, 2.0, 8), Color("2ae8ff"), 4.0, 1.4, false],
+			[Vector3(14, 2.2, 12), Color("e5484d"), 4.5, 1.6, false], [Vector3(3, 1.4, 11.5), Color("9863f5"), 4.5, 1.9, false],
+			[Vector3(9.5, 2.6, 11), Color("ffcf8a"), 5.0, 0.9, false]]:
 		var o := OmniLight3D.new()
 		o.position = l[0]; o.light_color = l[1]; o.omni_range = l[2]; o.light_energy = l[3]; o.shadow_enabled = l[4]
+		o.omni_attenuation = 1.4
 		add_child(o)
 		if l[1] == Color("e5484d") or l[1] == Color("9863f5"):
 			var tw := create_tween().set_loops()
 			tw.tween_property(o, "light_energy", 0.5, 1.1).set_trans(Tween.TRANS_SINE)
 			tw.tween_property(o, "light_energy", l[3], 1.1).set_trans(Tween.TRANS_SINE)
-	# contamination violette autour du nid (sud-ouest)
-	var goo := _mat("goo", Color("5a2a9a"), 0.2, 0.15, Color("6a2adf"))
-	for p in [Vector2i(2, 11), Vector2i(3, 12), Vector2i(4, 11), Vector2i(2, 12), Vector2i(5, 12), Vector2i(1, 11)]:
-		var s := SphereMesh.new(); s.radius = 0.32; s.height = 0.18
-		_track(p, _mesh(self, s, _cell_pos(p) + Vector3((p.x % 2) * 0.15, 0.02, (p.y % 2) * -0.15), goo))
-	# cuve de confinement brisée près de l'artefact
-	var tank := Node3D.new()
-	tank.position = Vector3(6.5, 0, 12.5)
-	add_child(tank)
-	var cyl := CylinderMesh.new(); cyl.top_radius = 0.38; cyl.bottom_radius = 0.38; cyl.height = 1.5
-	_mesh(tank, cyl, Vector3(0, 0.75, 0), _mat("tank", Color("39d9ef"), 0.1, 0.05, Color("0f5a70"), 0.35))
-	var cap := CylinderMesh.new(); cap.top_radius = 0.45; cap.bottom_radius = 0.45; cap.height = 0.12
-	_mesh(tank, cap, Vector3(0, 1.55, 0), _mat("wall", Color.BLACK))
-	_mesh(tank, cap, Vector3(0, 0.06, 0), _mat("wall", Color.BLACK))
-	_track(Vector2i(6, 12), tank)
-	# artefact
+	# contamination violette autour du nid (sud-ouest), KIT-009
+	for p in [Vector2i(2, 11), Vector2i(3, 12), Vector2i(4, 11), Vector2i(1, 11), Vector2i(5, 12), Vector2i(2, 9)]:
+		var gi: int = p.x * 31 + p.y
+		_track(p, AbyssKit.spawn("tendrils%d" % (gi % 3), AbyssKit.tendrils.bind(gi % 3), self, _cell_pos(p), gi * 0.7))
+	# berceau de confinement Némésis à l'emplacement de l'artefact
+	var cr := AbyssKit.spawn("cradle", AbyssKit.cradle, self, _cell_pos(battle.artifact))
+	_track(battle.artifact, cr)
+	# artefact Némésis : cristal noir aux nervures cyan, en lévitation
 	artifact_node = Node3D.new()
 	add_child(artifact_node)
-	var core := PrismMesh.new(); core.size = Vector3(0.35, 0.5, 0.35)
-	var top := _mesh(artifact_node, core, Vector3(0, 0.85, 0), _mat("artifact", Color("dffcff"), 0.2, 0.1, Color("39d9ef")))
-	var bottom := _mesh(artifact_node, core, Vector3(0, 0.35, 0), _mat("artifact", Color.BLACK))
+	var core := PrismMesh.new(); core.size = Vector3(0.3, 0.45, 0.3)
+	var top := _mesh(artifact_node, core, Vector3(0, 1.05, 0), _mat("artifact", Color("0d1620"), 0.9, 0.15, Color("39d9ef")))
+	var bottom := _mesh(artifact_node, core, Vector3(0, 0.6, 0), _mat("artifact", Color.BLACK))
 	bottom.rotation_degrees.x = 180
-	var al := OmniLight3D.new(); al.light_color = Color("39d9ef"); al.omni_range = 4.0; al.light_energy = 2.2; al.position = Vector3(0, 0.8, 0)
+	var halo := TorusMesh.new(); halo.inner_radius = 0.26; halo.outer_radius = 0.29
+	var hm := _mesh(artifact_node, halo, Vector3(0, 0.82, 0), AbyssKit.mat("led_cyan"))
+	hm.rotation_degrees.x = 70
+	var al := OmniLight3D.new(); al.light_color = Color("39d9ef"); al.omni_range = 4.5; al.light_energy = 2.4; al.position = Vector3(0, 1.0, 0)
 	artifact_node.add_child(al)
 	var spin := create_tween().set_loops()
 	spin.tween_property(top, "rotation_degrees:y", 360.0, 4.0).from(0.0)
+	var spin2 := create_tween().set_loops()
+	spin2.tween_property(hm, "rotation_degrees:y", -360.0, 6.0).from(0.0)
+	var bob := create_tween().set_loops()
+	bob.tween_property(top, "position:y", 1.12, 1.6).set_trans(Tween.TRANS_SINE)
+	bob.tween_property(top, "position:y", 1.05, 1.6).set_trans(Tween.TRANS_SINE)
 	var pulse := create_tween().set_loops()
-	pulse.tween_property(al, "light_energy", 1.0, 0.9).set_trans(Tween.TRANS_SINE)
-	pulse.tween_property(al, "light_energy", 2.4, 0.9).set_trans(Tween.TRANS_SINE)
+	pulse.tween_property(al, "light_energy", 1.2, 0.9).set_trans(Tween.TRANS_SINE)
+	pulse.tween_property(al, "light_energy", 2.6, 0.9).set_trans(Tween.TRANS_SINE)
 
 func _build_unit(u: AbyssUnit) -> void:
 	var root := Node3D.new()
@@ -335,7 +321,7 @@ func _build_unit(u: AbyssUnit) -> void:
 		lamp.rotation_degrees = Vector3(-20, 180, 0)
 		lamp.spot_range = 7.0
 		lamp.spot_angle = 30.0
-		lamp.light_energy = 2.0
+		lamp.light_energy = 1.3
 		lamp.light_color = Color("d8f4ff")
 		lamp.shadow_enabled = true
 		body.add_child(lamp)
@@ -913,11 +899,10 @@ func _play(events: Array) -> void:
 ## Effondrement : le bloc se fragmente, les morceaux rebondissent et restent ; poussière brève.
 func _collapse(n: Node3D) -> void:
 	var base := n.position
-	var mat := _mat("rubble", Color("3a4a58"), 0.5, 0.7)
 	_sparks(base + Vector3(0, 0.6, 0), Color("8aa0b0"), 24, 3.0, 0.7)
 	for i in 7:
 		var s := 0.16 + 0.06 * (i % 3)
-		var piece := _box(self, Vector3(s, s * 0.8, s), base + Vector3(0, 0.4 + (i % 4) * 0.35, 0), mat)
+		var piece := _mesh(self, AbyssKit.rubble_chunk(s), base + Vector3(0, 0.4 + (i % 4) * 0.35, 0), AbyssKit.mat("plate"))
 		var target := base + Vector3((i % 3 - 1) * 0.32 + randf_range(-0.1, 0.1), s * 0.4, (i / 3 - 1) * 0.32 + randf_range(-0.1, 0.1))
 		var tw := create_tween()
 		tw.tween_property(piece, "position", target, 0.45 / speed).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
