@@ -1,8 +1,8 @@
 // TacticalEngine : point d'entrée unique de la simulation.
 // Le rendu ne modifie jamais l'état directement : il envoie des Command et rejoue les GameEvent reçus.
 import type { BattleState, Command, CoverLevel, FireMode, GameEvent, Unit, Vec } from './types';
-import { ALIEN_ROSTER, RULES, SQUAD, UNIT_TEMPLATES, WEAPONS } from './data';
-import { LAB_MAP, idx, living, parseMap, unitById } from './map';
+import { ALIEN_ROSTER, HARDENED, RULES, SQUAD, UNIT_TEMPLATES, WEAPONS } from './data';
+import { MAPS, idx, living, parseMap, unitById } from './map';
 import { pathFrom, reachable, type Reach } from './pathfinding';
 import { canSee, spottedBy, updateExplored } from './los';
 import { coverAgainst } from './cover';
@@ -29,10 +29,10 @@ export function makeUnit(id: string, name: string, kind: string, p: Vec, over: P
 }
 
 /** Nouvelle bataille. La seed choisit les positions des aliens parmi les emplacements prévus. */
-export function createBattle(seed: string): BattleState {
-  const m = parseMap(LAB_MAP);
+export function createBattle(seed: string, mission = 'lab'): BattleState {
+  const m = parseMap(MAPS[mission] ?? MAPS.lab!);
   const s: BattleState = {
-    version: SAVE_VERSION, seed, rng: seedFrom(seed), turn: 1, side: 'human',
+    version: SAVE_VERSION, seed, mission, rng: seedFrom(seed), turn: 1, side: 'human',
     width: m.width, height: m.height, tiles: m.tiles, explored: m.tiles.map(() => false), units: [],
     objectives: { artifact: m.artifact, terminal: m.terminal, logsDone: false, evac: m.evac },
     outcome: 'ongoing', alienAlert: false, lastKnown: {}, commands: [],
@@ -41,13 +41,22 @@ export function createBattle(seed: string): BattleState {
     weapon: q.weapon, accuracy: q.accuracy, reactions: q.reactions, maxTu: q.tu, tu: q.tu, maxHp: q.hp, hp: q.hp,
     medkit: q.medkit, grenades: q.grenades, ammo: WEAPONS[q.weapon]!.mag,
   })));
+  const count: Record<string, number> = {};
+  const alien = (i: number, kind: string, at: Vec, over: Partial<Unit> = {}) => {
+    count[kind] = (count[kind] ?? 0) + 1;
+    s.units.push(makeUnit(`a${i + 1}`, `${UNIT_TEMPLATES[kind]!.name} ${count[kind]}`, kind, at, over));
+  };
+  if (m.fixedAliens.length) {
+    m.fixedAliens.forEach((a, i) => {
+      const h = HARDENED[a.kind];
+      alien(i, a.kind, a.at, h ? { maxHp: h.hp, hp: h.hp, maxTu: h.tu, tu: h.tu, accuracy: h.accuracy } : {});
+    });
+    updateExplored(s);
+    return s;
+  }
   const spots = [...m.alienSpots];
   for (let i = spots.length - 1; i > 0; i--) { const j = int(s, i + 1); [spots[i], spots[j]] = [spots[j]!, spots[i]!]; }
-  const count: Record<string, number> = {};
-  ALIEN_ROSTER.forEach((kind, i) => {
-    count[kind] = (count[kind] ?? 0) + 1;
-    s.units.push(makeUnit(`a${i + 1}`, `${UNIT_TEMPLATES[kind]!.name} ${count[kind]}`, kind, spots[i]!));
-  });
+  ALIEN_ROSTER.forEach((kind, i) => alien(i, kind, spots[i]!));
   updateExplored(s);
   return s;
 }
@@ -60,7 +69,7 @@ export class TacticalEngine {
 
   constructor(public state: BattleState) {}
 
-  static create(seed: string) { return new TacticalEngine(createBattle(seed)); }
+  static create(seed: string, mission = 'lab') { return new TacticalEngine(createBattle(seed, mission)); }
 
   unit(id: string): Unit | undefined { return unitById(this.state, id); }
   get soldiers() { return this.state.units.filter(u => u.faction === 'human'); }

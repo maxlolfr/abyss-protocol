@@ -4,6 +4,7 @@ export * from './data';
 export { TacticalEngine, createBattle, SAVE_VERSION } from './engine';
 export type { MovePreview, ShotPreview } from './engine';
 export { SaveManager, serialize, deserialize, SAVE_KEY } from './save';
+export type { KeyValueStore } from './save';
 export { coverAround, coverAgainst } from './cover';
 export { visibleTiles, canSee } from './los';
 export { idx, inEvac, tileAt } from './map';

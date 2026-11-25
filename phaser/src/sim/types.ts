@@ -60,6 +60,8 @@ export type Command =
 export interface BattleState {
   version: number;
   seed: string;
+  /** Clé de MAPS (absent dans les anciennes sauvegardes = 'lab'). */
+  mission?: string;
   rng: number;
   turn: number;
   side: Faction;

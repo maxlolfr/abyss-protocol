@@ -1,0 +1,23 @@
+/* Démo Némésis : interface militaire sobre (verre sombre, filets acier, accents cyan sonar et ambre). */
+:root { --panel: rgba(4, 10, 16, 0.78); --line: rgba(120, 170, 200, 0.28); --rw: 132px; }
+body { font-family: 'Rajdhani', 'Bahnschrift', 'DIN Alternate', system-ui, -apple-system, sans-serif; }
+.panel { backdrop-filter: blur(6px) saturate(1.2); -webkit-backdrop-filter: blur(6px) saturate(1.2);
+  box-shadow: 0 1px 0 rgba(160, 220, 255, 0.08) inset, 0 6px 18px rgba(0, 0, 0, 0.35); }
+button { background: rgba(10, 24, 36, 0.86); border-color: var(--line); }
+button.primary { background: linear-gradient(180deg, #4fe6f8, #22a9c0); color: #021018; letter-spacing: 1px; }
+.card { height: 56px; grid-template-columns: 46px 1fr; background: var(--panel); border-color: var(--line); }
+.card .face { width: 46px; height: 50px; grid-row: 1 / 4; border-radius: 4px; background: #0b1a26 center 18% / cover no-repeat;
+  color: transparent !important; border: 1px solid rgba(120, 170, 200, 0.35); filter: saturate(0.9); }
+.card.sel .face { border-color: var(--cyan); box-shadow: 0 0 10px rgba(57, 217, 239, 0.45); }
+.card.out .face { filter: grayscale(1) brightness(0.6); }
+#obj { letter-spacing: 0.4px; }
+
+/* écran de départ : illustration de la salle en fond, panneau de briefing */
+#start { background: radial-gradient(ellipse at 70% 40%, rgba(120, 70, 220, 0.25), transparent 55%),
+  radial-gradient(ellipse at 30% 70%, rgba(40, 200, 230, 0.16), transparent 60%), #02070b; }
+#start .brief { background: rgba(3, 10, 16, 0.72); border: 1px solid var(--line); border-left: 3px solid var(--cyan); border-radius: 6px; padding: 16px 22px; backdrop-filter: blur(4px); }
+#start h1 { letter-spacing: 6px; text-shadow: 0 0 18px rgba(57, 217, 239, 0.45); }
+#start .squad { display: flex; gap: 8px; margin: 10px 0 4px; }
+#start .squad figure { margin: 0; width: 64px; text-align: center; font-size: 11px; color: var(--dim); }
+#start .squad img { width: 64px; height: 64px; object-fit: cover; object-position: center 20%; border-radius: 4px; border: 1px solid var(--line); display: block; margin-bottom: 3px; }
+#start .tag { display: inline-block; font-size: 11px; color: var(--violet); border: 1px solid rgba(152, 99, 245, 0.5); border-radius: 3px; padding: 1px 6px; margin-left: 6px; letter-spacing: 1px; }

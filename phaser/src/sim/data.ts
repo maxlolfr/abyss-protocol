@@ -48,6 +48,13 @@ export const SQUAD = [
   { id: 's4', name: 'Moreau', weapon: 'pistol', accuracy: 64, reactions: 70, tu: 66, hp: 32, medkit: 3, grenades: 0 },
 ] as const;
 
+/** Cartes à 3 aliens fixes (Némésis) : mêmes valeurs que godot/sim/data.gd, plus résistants qu'à 6. */
+export const HARDENED: Record<string, { hp: number; tu: number; accuracy: number }> = {
+  nereide: { hp: 44, tu: 64, accuracy: 68 },
+  carapace: { hp: 90, tu: 52, accuracy: 62 },
+  spectre: { hp: 34, tu: 66, accuracy: 80 },
+};
+
 export const ALIEN_ROSTER = ['nereide', 'nereide', 'nereide', 'carapace', 'spectre', 'spectre'] as const;
 
 export const RULES = {

@@ -55,3 +55,8 @@ Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA
 1. Suite de `docs/NEMESIS.md` : N1 à N4 faits (N4 = refonte visuelle avec les sprites des planches de Max, interface, performance). Inventaire des ressources : `Game-studio-ai/docs/studio/art/abyss-protocol/ASSET_INVENTORY.md`. Max a autorisé (25/11 15 h 36) la publication des versions allégées de ses créations dans le jeu public, jamais les originaux, zips, planches complètes ni prompts.
 2. Mesures d'i/s de Max (haute / moyenne / allégée) ; Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).
 3. Intégrer les références visuelles de ChatGPT/Gemini quand elles seront dans le studio ; vrais modèles via `godot/view/unit_visuals.gd` (`res://assets/units/<kind>.tscn`).
+
+## Directive V2 (26/11) — reprise
+- Directive : `docs/MASTER-DIRECTIVE-V2.md` (branche `claude-b/reorientation`). Import 2D : `tools/import_2d.py`, étiquettes `assets2d/labels_lot01_chat.json`, note `assets2d/REPRISE.md` (branche `claude-b/import-2d`). Masters hors dépôt : `~/abyss_masters` (perdus entre conversations : Max renvoie les images).
+- Démo Phaser 4 salle Némésis : branche `experiment/phaser4`, journal `docs/PHASER4-NEMESIS.md`. Ressources : `tools/build_phaser_nemesis.py`, poses : `tools/cut_pose_sheet.py` (planches de Max → `~/abyss_masters/poses`). Ne pas fusionner sans Max.
+- Local sans npm : Phaser par `git clone --depth 1 --branch v4.2.1 --filter=blob:none --sparse https://github.com/phaserjs/phaser` (dist, types, skills) + lien `phaser/node_modules/phaser` ; tsc/esbuild/playwright dans `/opt/npm-tools`, Chromium `/opt/pw-browsers`.
