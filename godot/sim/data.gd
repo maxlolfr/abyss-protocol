@@ -33,6 +33,8 @@ const WEAPONS := {
 	"rifle": {"name": "Fusil à fléchettes", "mag": 10, "damage": 26, "range": 14, "snap": [12, 62], "aimed": [24, 108], "breach": false},
 	"pistol": {"name": "Pistolet à gaz", "mag": 12, "damage": 20, "range": 9, "snap": [9, 70], "aimed": [18, 92], "breach": false},
 	"harpoon": {"name": "Harpon lourd", "mag": 4, "damage": 44, "range": 12, "snap": [16, 50], "aimed": [30, 102], "breach": true},
+	"harpoon_ap": {"name": "Harpon perforant", "mag": 4, "damage": 44, "range": 12, "snap": [16, 50], "aimed": [30, 102], "breach": true, "pierce": 8},
+	"cavitation": {"name": "Fusil à cavitation", "mag": 8, "damage": 34, "range": 14, "snap": [13, 64], "aimed": [26, 106], "breach": false, "pierce": 4},
 	"dart": {"name": "Lance-dard", "damage": 24, "range": 12, "snap": [14, 60], "aimed": [26, 98], "breach": false},
 	"acid": {"name": "Jet corrosif", "damage": 34, "range": 6, "snap": [18, 82], "aimed": [], "breach": false},
 	"psi": {"name": "Onde psychique", "damage": 15, "range": 9, "snap": [20, 85], "aimed": [], "breach": false, "ignores_cover": true, "drain": 20},
@@ -94,11 +96,50 @@ const NEMESIS := [
 	"XXXXXXXXXXXXXXXX",
 ]
 
-const MAPS := {"lab": LAB, "nemesis": NEMESIS}
+## Port attaqué (campagne) : bassin portuaire au nord d'où les créatures sont sorties, conteneurs,
+## entrepôt central ouvert au sud, débarquement de l'escouade au sud-ouest. Élimination.
+const PORT := [
+	"XXXXXXXXXXXXXXXX",
+	"X~~~~~~~~~~~~~~X",
+	"X~~~~~~~N~~~~~~X",
+	"X~~~...~~~~~~~~X",
+	"X.....c....c...X",
+	"X.c......N...c.X",
+	"X.....###.###..X",
+	"X..c..#.....#..X",
+	"X.....#..C..#..X",
+	"X.c...##...##..X",
+	"X..........c...X",
+	"XSES..c........X",
+	"XEEE.....c...c.X",
+	"XSES...........X",
+	"XXXXXXXXXXXXXXXX",
+]
+
+## Le Nid (fin de la campagne courte) : caverne organique, noyau (D) entre deux bassins,
+## corniches gardées par un Spectre, Néréides dans les mares. Arracher le noyau et le ramener au sas.
+const NID := [
+	"XXXXXXXXXXXXXXXX",
+	"X=P==..~D~..==kX",
+	"X====.~~~~~.===X",
+	"X./..c....c../.X",
+	"X...#..C....#..X",
+	"X~~.#.....c.#~~X",
+	"X~N..........N~X",
+	"X..c..#..#..c..X",
+	"X.....#..#.....X",
+	"X..c........c..X",
+	"X.....SES......X",
+	"X.....EEE......X",
+	"X.....SES......X",
+	"XXXXXXXXXXXXXXXX",
+]
+
+const MAPS := {"lab": LAB, "nemesis": NEMESIS, "port": PORT, "nid": NID}
 
 ## Éliminer tous les hostiles suffit-il ? Non sur Némésis : seule l'extraction de l'artefact compte
 ## (la cuve contaminée réveille des renforts à la prise).
-const ELIMINATION_WINS := {"lab": true, "nemesis": false}
+const ELIMINATION_WINS := {"lab": true, "nemesis": false, "port": true, "nid": false}
 
 ## Renforts déclenchés par l'alarme (prise de l'artefact) : [type, cases possibles par ordre de préférence,
 ## retard (0 = à l'alarme, 1 = au début du tour alien qui suit)].
@@ -107,5 +148,10 @@ const REINFORCEMENTS := {
 	"nemesis": [
 		["nereide", [Vector2i(1, 7), Vector2i(2, 7), Vector2i(1, 8), Vector2i(2, 8), Vector2i(3, 8)], 0],
 		["nereide", [Vector2i(13, 8), Vector2i(14, 8), Vector2i(12, 8), Vector2i(12, 7)], 2],
+	],
+	"nid": [
+		["nereide", [Vector2i(1, 5), Vector2i(2, 5), Vector2i(1, 6)], 0],
+		["carapace", [Vector2i(13, 5), Vector2i(14, 5), Vector2i(14, 6)], 1],
+		["spectre", [Vector2i(14, 2), Vector2i(13, 1)], 2],
 	],
 }

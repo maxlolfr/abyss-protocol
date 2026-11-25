@@ -62,6 +62,8 @@ jobs:
         run: godot --headless --path . --import || true
       - name: Tests de simulation (GDScript)
         run: timeout 600 godot --headless --path . -s res://tests/run_tests.gd
+      - name: Tests de campagne (géoscape, base, soldats)
+        run: timeout 600 godot --headless --path . -s res://tests/strategy_tests.gd
       - name: Export Web
         run: |
           mkdir -p build

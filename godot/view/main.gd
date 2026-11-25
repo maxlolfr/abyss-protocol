@@ -17,6 +17,16 @@ const PROPS := {
 			[Vector3(13.5, 2.0, 8), Color("e5484d"), 4.5, 1.6, false], [Vector3(3.5, 1.4, 6.5), Color("9863f5"), 5.0, 1.9, false],
 			[Vector3(7.5, 2.6, 7.5), Color("ffcf8a"), 5.0, 0.8, false]],
 		"goo": [Vector2i(6, 4), Vector2i(8, 2), Vector2i(4, 6), Vector2i(3, 7), Vector2i(9, 5), Vector2i(6, 2), Vector2i(1, 6)]},
+	# Port de nuit : projecteurs de quai ambre, eau du bassin cyan, gyrophare rouge, traînées bioluminescentes
+	"port": {"lights": [[Vector3(3.5, 3.2, 11.5), Color("ffb547"), 6.5, 1.6, false], [Vector3(12.5, 3.2, 11), Color("ffcf8a"), 6.0, 1.2, false],
+			[Vector3(7.5, 2.4, 2.5), Color("39d9ef"), 7.5, 1.4, false], [Vector3(9.5, 2.6, 7.5), Color("8fe8ff"), 4.5, 1.1, false],
+			[Vector3(14, 2.0, 4.5), Color("e5484d"), 4.0, 1.5, false]],
+		"goo": [Vector2i(5, 3), Vector2i(4, 4), Vector2i(9, 4), Vector2i(8, 5), Vector2i(10, 3)]},
+	# Le Nid : chair bioluminescente violette, noyau cyan, mares phosphorescentes
+	"nid": {"lights": [[Vector3(8.5, 2.6, 1.5), Color("2ae8ff"), 6.5, 2.0, false], [Vector3(2.5, 2.4, 5.5), Color("9863f5"), 5.5, 1.9, false],
+			[Vector3(13.5, 2.4, 5.5), Color("9863f5"), 5.5, 1.9, false], [Vector3(7.5, 2.2, 11.5), Color("ffb547"), 5.0, 1.3, false],
+			[Vector3(7.5, 2.6, 7.5), Color("b04cff"), 5.0, 1.2, false]],
+		"goo": [Vector2i(4, 3), Vector2i(7, 4), Vector2i(10, 5), Vector2i(3, 7), Vector2i(12, 7), Vector2i(8, 8), Vector2i(5, 9), Vector2i(10, 9), Vector2i(6, 5)]},
 }
 
 var battle: AbyssBattle
