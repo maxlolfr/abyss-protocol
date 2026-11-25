@@ -29,8 +29,12 @@ static func mat(key: String) -> Material:
 			m.uv1_triplanar = true
 			m.uv1_triplanar_sharpness = 4.0
 			m.uv1_scale = Vector3.ONE * ({"hull": 0.5, "hazard": 2.0, "crate": 1.2}.get(key, 1.0))
+			if key in ["floor", "grate"]:
+				# projection dans le repère du monde : les dalles se prolongent d'une case à l'autre, la grille de jeu
+				# ne se lit plus dans le sol (refonte V1) ; 1 texture = 2 m pour le sol
+				m.uv1_world_triplanar = true
 			if key == "floor":
-				m.albedo_color = Color(0.72, 0.74, 0.76) # sol plus sombre et plus neutre : le décor prime sur la grille
+				m.uv1_scale = Vector3.ONE * 0.5
 		"screen", "screen_green":
 			m.albedo_texture = load(TEX % ["screen", "albedo"])
 			m.emission_enabled = true
@@ -58,7 +62,7 @@ static func mat(key: String) -> Material:
 			m.emission = Color("0e4a6a")
 			m.emission_energy_multiplier = 0.9
 		"water":
-			_flat(m, Color(0.05, 0.32, 0.4, 0.72), 0.3, 0.04)
+			_flat(m, Color(0.02, 0.1, 0.14, 0.82), 0.4, 0.03) # eau sombre et profonde (refonte V1)
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			m.emission_enabled = true
 			m.emission = Color("06303e")
@@ -249,13 +253,17 @@ static func spawn(key: String, make: Callable, parent: Node3D, at: Vector3, yaw 
 
 ## Dalle de sol 1 m : tôle larmée chanfreinée ; variante sas avec bordure de danger.
 static func floor_tile(evac: bool) -> Piece:
-	var p := Piece.new().box(Vector3(0.99, 0.1, 0.99), Vector3(0, -0.05, 0), "floor", 0.012)
+	var p := Piece.new().box(Vector3(1.0, 0.1, 1.0), Vector3(0, -0.05, 0), "floor", 0.0) # sans joint : sol continu
 	if evac:
 		for i in 4:
 			var r := i * 90.0
 			var off := Vector3(0, 0.003, 0.44).rotated(Vector3.UP, deg_to_rad(r))
 			p.box(Vector3(0.98, 0.012, 0.09), off, "hazard", 0.004, Vector3(0, r, 0))
 	return p
+
+## Bande de danger sur le bord +Z d'une case (pourtour du sas uniquement, pas de quadrillage).
+static func evac_edge() -> Piece:
+	return Piece.new().box(Vector3(1.0, 0.012, 0.12), Vector3(0, 0.004, 0.44), "hazard", 0.004)
 
 ## Cloison destructible (KIT-001) : cadre porteur, panneau, faisceau de tuyaux et voyant ambre.
 static func wall(h: float) -> Piece:

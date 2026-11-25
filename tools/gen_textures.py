@@ -117,21 +117,50 @@ def hull():
 
 
 def floor():
-    """Sol : tôle larmée antidérapante en dalles de 1 m, joints sombres, traces de passage."""
-    h, e = panels(1, 1, groove=0.008, bevel=0.015)
-    u, v = xx * 22, yy * 22
+    """Sol (refonte V1) : dalles d'acier de tailles différentes, joints décalés qui ne suivent PAS la grille de jeu
+    (la grille n'apparaît plus dans le décor), tôle larmée sur certaines dalles, dalles lisses rivetées,
+    gunmetal neutre, taches d'huile et traces de passage. 1 texture = 2 m (projection triplanaire monde)."""
+    rows = [(0.0, 0.3, [0.0, 0.42, 0.78]), (0.3, 0.75, [0.0, 0.2, 0.55]), (0.75, 1.0, [0.0, 0.33, 0.62, 0.86])]
+    h = np.zeros((N, N)); kind = np.zeros((N, N)); tint = np.zeros((N, N)); edge = np.ones((N, N))
+    k = 0
+    for (y0, y1, cuts) in rows:
+        cuts = cuts + [1.0]
+        for i in range(len(cuts) - 1):
+            x0, x1 = cuts[i], cuts[i + 1]
+            m = (yy >= y0) & (yy < y1) & (xx >= x0) & (xx < x1)
+            e = np.minimum(np.minimum(xx - x0, x1 - xx), np.minimum(yy - y0, y1 - yy))
+            edge = np.where(m, e, edge)
+            kind = np.where(m, k % 3, kind)
+            tint = np.where(m, (k * 0.37) % 1, tint)
+            k += 1
+    plate = np.clip((edge - 0.004) / 0.008, 0, 1)
+    u, v = xx * 44, yy * 44
     lu, lv = (u % 1) - 0.5, (v % 1) - 0.5
     sg = np.where((np.floor(u) + np.floor(v)) % 2 > 0, 1, -1)
     ra, rb = (lu + sg * lv) / 1.414, (lu - sg * lv) / 1.414
-    tread = np.clip(1 - (ra / 0.36) ** 2 - (rb / 0.09) ** 2, 0, 1) ** 0.5  # tôle larmée : lozenges croisés
+    tread = np.clip(1 - (ra / 0.36) ** 2 - (rb / 0.09) ** 2, 0, 1) ** 0.5 * (kind == 0)
+    slots = ((np.abs(((xx * 30) % 1) - 0.5) < 0.12) & (np.abs(((yy * 6) % 1) - 0.5) < 0.3)).astype(float) * (kind == 2)
+    rv = np.zeros((N, N))
+    near_edge = (edge > 0.012) & (edge < 0.022)
+    rv = near_edge * ((((xx + yy) * 40) % 1) < 0.18) * (kind == 1)
     n = noise(16, 5)
-    col = hexcol("3a4a57") * (0.85 + 0.2 * n[..., None])
-    worn = blur(noise(4, 3), 3) > 0.52
-    col = col * (1 - tread[..., None] * 0.08) + hexcol("9aa6ae") * (tread * worn)[..., None] * 0.35
-    col, d = grime(col, hexcol("1c1d1c"), 0.4, streak=False)
-    col *= (1 - (1 - h)[..., None] * 0.75)
-    rough = 0.55 + 0.2 * d - 0.25 * tread * worn
-    save("floor", col, h * 0.5 + tread * 0.35 + n * 0.04, rough)
+    col = hexcol("43484d") * (0.82 + 0.2 * n[..., None]) * (0.9 + 0.18 * tint[..., None])
+    worn = blur(noise(4, 3), 3) > 0.5
+    col = col + hexcol("9aa3aa") * (tread * worn)[..., None] * 0.3
+    col = col * (1 - slots[..., None] * 0.75)
+    oil = np.clip((noise(3, 4) - 0.66) * 6, 0, 1)
+    col = col * (1 - oil[..., None] * 0.45)
+    col, d = grime(col, hexcol("1a1918"), 0.38, streak=False)
+    col *= (1 - (1 - plate)[..., None] * 0.8)
+    rough = 0.6 + 0.2 * d - 0.25 * tread * worn - 0.3 * oil
+    save("floor", col, plate * 0.5 + tread * 0.3 + rv * 0.4 - slots * 0.4 + n * 0.04, rough)
+
+
+def light_pool():
+    """Tache de lumière douce (fausse lumière au sol, gratuite en rendu sur mobile)."""
+    r = np.sqrt((xx - 0.5) ** 2 + (yy - 0.5) ** 2) * 2
+    a = np.clip(1 - r, 0, 1) ** 2.2
+    save_rgba("pool", np.ones((N, N, 3)), a)
 
 
 def grate():
@@ -232,6 +261,6 @@ def fx():
 
 
 if __name__ == "__main__":
-    for f in (metal_plate, hull, floor, grate, hazard, crate, screen, flesh, fabric, fx):
+    for f in (metal_plate, hull, floor, grate, hazard, crate, screen, flesh, fabric, fx, light_pool):
         f()
         print("ok", f.__name__)

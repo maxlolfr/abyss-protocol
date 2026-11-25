@@ -51,12 +51,16 @@ var drag_moved := false
 var drag_from := Vector2.ZERO
 var mats := {}
 var audio := AbyssAudio.new()
+var dressing := AbyssDressing.new()
+var _occl_t := 0.0
+var _story := {}
 var combat_music := false
 var show_intro := true # écran titre + briefing (désactivé par les captures et tests)
 
 func _ready() -> void:
 	battle = _load_or_new()
 	_build_env()
+	add_child(dressing)
 	_build_map()
 	_build_props()
 	for u in battle.units:
@@ -82,6 +86,8 @@ func _ready() -> void:
 		break
 	_sync()
 	_update_cutaway()
+	if battle.units.any(func(u): return u.carrying):
+		dressing.set_alarm(true) # partie reprise pendant l'extraction
 	var mobile := OS.has_feature("web_android") or OS.has_feature("web_ios") or OS.has_feature("mobile")
 	_apply_quality(_query("q") if _query("q") in ["haute", "moyenne", "basse"] else ("moyenne" if mobile else "haute"))
 	hud.set_quality(quality)
@@ -104,6 +110,9 @@ func _ready() -> void:
 
 ## Ambiance du labo + musique d'exploration ; passage au thème de combat au premier contact ou à l'alarme.
 func _mission_audio() -> void:
+	if not _story.has("intro") and battle.turn == 1:
+		_story["intro"] = true
+		hud.flash("Station Némésis, secteur confinement. Silence radio depuis 72 heures.", AbyssHud.CYAN)
 	audio.ambience(true)
 	audio.music("mus_03_contact_hostile" if combat_music else "mus_02_silent_depths", 2.0)
 
@@ -193,13 +202,13 @@ func _build_env() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("070d16")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("23384a")
-	env.ambient_light_energy = 0.6
+	env.ambient_light_color = Color("1e2a34") # refonte V1 : ambiance acier neutre, le bleu devient un accent
+	env.ambient_light_energy = 0.55
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.2
+	env.tonemap_exposure = 1.35
 	env.fog_enabled = true
-	env.fog_light_color = Color("061420")
-	env.fog_density = 0.03
+	env.fog_light_color = Color("060d14")
+	env.fog_density = 0.025
 	env.glow_enabled = true
 	env.glow_intensity = 0.5
 	env.glow_bloom = 0.0
@@ -209,8 +218,8 @@ func _build_env() -> void:
 	we.environment = env
 	add_child(we)
 	# lumière froide filtrée par la surface, ombres dynamiques
-	sun.light_color = Color("b4d8f0")
-	sun.light_energy = 0.55
+	sun.light_color = Color("c4d4e2")
+	sun.light_energy = 0.4
 	sun.shadow_enabled = true
 	sun.rotation_degrees = Vector3(-55, 35, 0)
 	add_child(sun)
@@ -296,8 +305,11 @@ func _build_map() -> void:
 			elif t == AbyssGrid.T.WATER:
 				_bat(batch, "pool", Transform3D(Basis.IDENTITY, c))
 			else:
-				var ev := battle.in_evac(p)
-				_bat(batch, "floor_e" if ev else "floor", Transform3D(Basis(Vector3.UP, PI / 2 * ((x * 3 + y) % 4)), c))
+				_bat(batch, "floor", Transform3D(Basis.IDENTITY, c))
+				if battle.in_evac(p): # pourtour du sas seulement
+					for d in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+						if not battle.in_evac(p + d) and g.tile(p + d) != AbyssGrid.T.HULL:
+							_bat(batch, "evac_edge", Transform3D(Basis(Vector3.UP, atan2(float(d.x), float(d.y))), c))
 			if t == AbyssGrid.T.WALL:
 				# orientation : la cloison suit ses voisines
 				var along_x := g.tile(p + Vector2i(1, 0)) in [AbyssGrid.T.WALL, AbyssGrid.T.HULL] or g.tile(p - Vector2i(1, 0)) in [AbyssGrid.T.WALL, AbyssGrid.T.HULL]
@@ -323,7 +335,7 @@ func _build_map() -> void:
 				wall_nodes[g.idx(p)] = n
 				_track(p, n)
 	# sols, passerelles et bassins : un objet par type de dalle (MultiMesh)
-	var makers := {"floor": K.floor_tile.bind(false), "floor_e": K.floor_tile.bind(true), "deck_high": K.deck_high, "pool": K.pool,
+	var makers := {"floor": K.floor_tile.bind(false), "evac_edge": K.evac_edge, "deck_high": K.deck_high, "pool": K.pool,
 		"hull": K.hull.bind(false), "hull_w": K.hull.bind(true)}
 	for key in batch:
 		var mmi := K.batch(self, key, makers[key], batch[key])
@@ -358,7 +370,8 @@ func _build_map() -> void:
 
 func _build_props() -> void:
 	# éclairages façon ENV-007 : ambre au sas, néons cyan du labo, alarme rouge, contamination violette
-	for l in PROPS[battle.map_id]["lights"]:
+	dressing.build(self)
+	for l in PROPS[battle.map_id]["lights"] if battle.map_id != "nemesis" else []:
 		var o := OmniLight3D.new()
 		o.position = l[0]; o.light_color = l[1]; o.omni_range = l[2]; o.light_energy = l[3]; o.shadow_enabled = l[4]
 		o.omni_attenuation = 1.4
@@ -413,14 +426,26 @@ func _build_unit(u: AbyssUnit) -> void:
 		lamp.name = "Lamp"
 		lamp.position = Vector3(0.15, 0.17, 0.09)
 		lamp.rotation_degrees = Vector3(-20, 180, 0)
-		lamp.spot_range = 7.0
-		lamp.spot_angle = 30.0
-		lamp.light_energy = 1.3
-		lamp.light_color = Color("d8f4ff")
+		lamp.spot_range = 5.0
+		lamp.spot_angle = 28.0
+		lamp.light_energy = 0.7
+		lamp.light_color = Color("f2f6ff")
 		lamp.shadow_enabled = false # une ombre de projecteur = toute la scène redessinée : réservé à la lumière principale
 		var head: Node3D = body.find_child("Head", true, false)
 		(head if head else body).add_child(lamp)
-	var ring := TorusMesh.new(); ring.inner_radius = 0.36; ring.outer_radius = 0.42
+	var blob := PlaneMesh.new()
+	var bs := 1.7 if u.kind == "carapace" else (0.0 if u.kind == "spectre" else 0.95)
+	blob.size = Vector2(bs, bs)
+	if bs > 0.0:
+		var bm := StandardMaterial3D.new()
+		bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		bm.albedo_texture = load("res://assets/textures/fx_pool.png")
+		bm.albedo_color = Color(0, 0, 0, 0.62)
+		var sh := _mesh(root, blob, Vector3(0, 0.025, 0), bm)
+		sh.name = "Contact"
+		sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var ring := TorusMesh.new(); ring.inner_radius = 0.4; ring.outer_radius = 0.43
 	var rm := _mesh(root, ring, Vector3(0, 0.03, 0), _mat("ring", Color("39d9ef"), 0, 1, Color("39d9ef")))
 	rm.name = "Ring"
 	rm.visible = false
@@ -465,6 +490,7 @@ func _update_cutaway() -> void:
 		var t := mm.get_instance_transform(hn[3])
 		t.basis = Basis(Vector3.UP, atan2((hn[1] as Vector3).x, (hn[1] as Vector3).z)).scaled(Vector3(1, 0.12 if low else 1.0, 1))
 		mm.set_instance_transform(hn[3], t)
+	dressing.update_cutaway(back)
 
 func _on_setting(key: String, v: Variant) -> void:
 	match key:
@@ -472,13 +498,15 @@ func _on_setting(key: String, v: Variant) -> void:
 		"cine": cine = v
 		"shadows":
 			sun.shadow_enabled = v
-		"quality": _apply_quality(v)
+		"quality":
+			_apply_quality(v)
 		"sound": audio.set_enabled(v)
 
 ## Niveaux de qualité. Haute : tout ; Moyenne (défaut sur téléphone) : rendu 3D à 65 % de la résolution native
 ## (les écrans mobiles sont à 3x) ; Basse : 45 %, sans ombres, sans halo, sans lampes frontales ni neige marine.
 func _apply_quality(q: String) -> void:
 	quality = q
+	dressing.set_quality(q)
 	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	get_viewport().scaling_3d_scale = {"haute": 1.0, "moyenne": 0.65, "basse": 0.45}[q]
 	sun.shadow_enabled = q != "basse"
@@ -677,20 +705,22 @@ func _show_reach() -> void:
 		if r["cost"][k] > 0:
 			zone[k] = 2 if selected.tu - r["cost"][k] >= keep else 1
 	var tile := PlaneMesh.new(); tile.size = Vector2(0.96, 0.96)
-	var edge_x := BoxMesh.new(); edge_x.size = Vector3(0.96, 0.012, 0.035)
-	var edge_z := BoxMesh.new(); edge_z.size = Vector3(0.035, 0.012, 0.96)
+	var edge_x := BoxMesh.new(); edge_x.size = Vector3(0.96, 0.008, 0.02)
+	var edge_z := BoxMesh.new(); edge_z.size = Vector3(0.02, 0.008, 0.96)
 	var g := battle.grid
 	for k in zone:
 		var p := Vector2i(k % g.w, k / g.w)
 		var ok: bool = zone[k] == 2
 		var col := Color("39d9ef") if ok else Color("ffb547")
-		var fill := _mesh(overlay, tile, _cell_pos(p) + Vector3(0, 0.012, 0), _mat("reachFill%s" % ok, col, 0, 1, Color.BLACK, 0.07))
+		var fill := _mesh(overlay, tile, _cell_pos(p) + Vector3(0, 0.012, 0), _mat("reachFill%s" % ok, col, 0, 1, Color.BLACK, 0.045))
 		fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var q: Vector2i = p + d
 			if zone.get(g.idx(q) if g.inside(q) else -1, 0) >= zone[k]:
 				continue
-			var e := _mesh(overlay, edge_z if d.x else edge_x, _cell_pos(p) + Vector3(d.x * 0.47, 0.02, d.y * 0.47), _mat("reachEdge%s" % ok, col, 0, 1, col * 0.45, 0.7))
+			if not g.inside(q) or g.tile(q) in [AbyssGrid.T.HULL, AbyssGrid.T.WALL, AbyssGrid.T.LOW]:
+				continue # le bord d'un mur ou d'un couvert se lit déjà dans le décor
+			var e := _mesh(overlay, edge_z if d.x else edge_x, _cell_pos(p) + Vector3(d.x * 0.47, 0.02, d.y * 0.47), _mat("reachEdge%s" % ok, col, 0, 1, col * 0.25, 0.55))
 			e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 ## Boucliers de couverture autour de la case visée (cyan = total, ambre = partiel).
@@ -736,6 +766,47 @@ func _beam(a: Vector3, b: Vector3, col: Color, parent: Node3D, width := 0.05) ->
 
 func _visible(u: AbyssUnit) -> bool:
 	return u.human or battle.seen_by_humans(u)
+
+## Cloisons et couverts qui cachent une unité (entre elle et la caméra) : rendus translucides.
+## Récit de mission : messages à la découverte de la contamination (vue seulement, la simulation n'est pas touchée).
+func _process(delta: float) -> void:
+	_occl_t += delta
+	if _occl_t < 0.2:
+		return
+	_occl_t = 0.0
+	var f := -cam.global_transform.basis.z
+	f.y = 0.0
+	f = f.normalized()
+	var side := Vector3(f.z, 0, -f.x)
+	var shown: Array[Vector3] = []
+	for u in battle.units:
+		if u.alive and not u.evacuated and _visible(u):
+			shown.append(_cell_pos(u.cell))
+	for k in wall_nodes:
+		var n: Node3D = wall_nodes[k]
+		if not is_instance_valid(n):
+			continue
+		var hide := false
+		for at in shown:
+			var d := at - n.position
+			var depth := d.dot(f)
+			if depth > 0.2 and depth < 2.6 and absf(d.dot(side)) < 0.75 and at.y <= n.position.y + 0.1:
+				hide = true
+				break
+		for c in n.get_children():
+			if c is GeometryInstance3D:
+				(c as GeometryInstance3D).transparency = 0.6 if hide else 0.0
+	# contamination : premier soldat à moins de 2 cases d'une excroissance
+	if not _story.has("goo") and battle.side == "human":
+		for u in battle.living(true):
+			for gp in PROPS[battle.map_id]["goo"]:
+				if maxi(absi(u.cell.x - gp.x), absi(u.cell.y - gp.y)) <= 2:
+					_story["goo"] = true
+					hud.flash("Contamination extraterrestre : tissus biomécaniques sur les parois…", Color("b48cff"))
+					audio.sfx("nereid_alert", null, -14.0, 0.6)
+					break
+			if _story.has("goo"):
+				break
 
 func _sync() -> void:
 	for u in battle.units:
@@ -1076,7 +1147,8 @@ func _play(events: Array) -> void:
 				artifact_node.visible = false
 				audio.sfx("artifact_pulse", null, -1.0)
 			"alarm":
-				hud.flash("L'artefact pulse : tous les hostiles convergent !", AbyssHud.RED)
+				hud.flash("L'artefact pulse : tous les hostiles convergent ! Regagnez le sas !", AbyssHud.RED)
+				dressing.set_alarm(true)
 				_combat_audio()
 				_flash_light(_cell_pos(battle.unit(events.filter(func(x): return x["t"] == "pickup")[0]["unit"]).cell) + Vector3(0, 1, 0), Color("39d9ef"), 14.0, 6.0, 1.2)
 				await _wait(0.6)

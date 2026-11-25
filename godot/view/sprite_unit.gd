@@ -9,11 +9,11 @@ extends Node3D
 const DIR := "res://assets/units/sprites/%s_%s.png"
 ## jeu de sprites, hauteur en mètres, lévitation, translucide, teinte
 const SETS := {
-	"s1": ["walker", 1.85, 0.0, false, Color(1.3, 1.3, 1.3)],
-	"s2": ["okafor", 1.88, 0.0, false, Color(1.3, 1.3, 1.3)],
-	"s3": ["marine", 1.85, 0.0, false, Color(1.3, 1.38, 1.45)],
-	"s4": ["marine", 1.82, 0.0, false, Color(1.45, 1.38, 1.25)],
-	"nereide": ["nereide", 1.95, 0.0, false, Color(1.35, 1.35, 1.4)],
+	"s1": ["walker", 1.85, 0.0, false, Color(1.55, 1.55, 1.55)],
+	"s2": ["okafor", 1.88, 0.0, false, Color(1.55, 1.55, 1.55)],
+	"s3": ["marine", 1.85, 0.0, false, Color(1.5, 1.6, 1.7)],
+	"s4": ["marine", 1.82, 0.0, false, Color(1.7, 1.6, 1.45)],
+	"nereide": ["nereide", 1.95, 0.0, false, Color(1.6, 1.6, 1.65)],
 	"spectre": ["spectre", 2.0, 0.25, true, Color(0.95, 0.9, 1.05, 0.92)],
 }
 
