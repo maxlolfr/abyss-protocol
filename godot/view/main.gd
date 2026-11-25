@@ -51,6 +51,7 @@ var mobile := false
 var _auto_quality := false # sur téléphone : baisse automatique si les i/s restent faibles
 var _slow_t := 0.0
 var hull_fit := {} # mise en place des modèles de coque livrés (ModelKit), par clé
+var hull_proxy := {} # ombres simplifiées des coques livrées (qualité moyenne)
 var hull_mm := {} # coque en MultiMesh : la coupe côté caméra modifie les instances
 var fog_layers: Array[MultiMesh] = [] # [inconnu, mémorisé]
 var overlay := Node3D.new()
@@ -462,6 +463,9 @@ func _build_map() -> void:
 				var n := Vector3(-1 if x == 0 else (1 if x == g.w - 1 else 0), 0, -1 if y == 0 else (1 if y == g.h - 1 else 0))
 				var corner := (x == 0 or x == g.w - 1) and (y == 0 or y == g.h - 1)
 				var hk := "hull_w" if win else ("hull_c" if corner else "hull") # angle : modèle « mur_angle » s'il est livré
+				var infected := not win and edge and battle.map_id == "nemesis" and x == 0 and y >= 5 and y <= 8
+				if infected:
+					hk = "hull_x" # paroi contaminée : modèle « mur_contamine » s'il est livré
 				_bat(batch, hk, Transform3D(Basis(Vector3.UP, atan2(n.x, n.z) - (PI / 4 if corner else 0.0)), hn.position))
 				if win and (x + y) % 2 == 0 and AbyssKit.theme == "station":
 					var beam := K.spawn("beam", K.light_beam, hn, Vector3.ZERO, atan2(-n.x, -n.z))
@@ -471,7 +475,7 @@ func _build_map() -> void:
 					var pipe := K.prop("p006_s1", 0.42)
 					pipe.position = -n * 0.56 + Vector3(0, 1.75, 0)
 					hn.add_child(pipe)
-				elif not win and edge and battle.map_id == "nemesis" and x == 0 and y >= 5 and y <= 8:
+				elif infected and ModelKit.piece("hull_x", K.theme).is_empty():
 					var growth := K.prop("k009_1", 1.1)
 					growth.position = -n * 0.55 + Vector3(0, 0.2, 0)
 					hn.add_child(growth)
@@ -492,7 +496,15 @@ func _build_map() -> void:
 			elif t == AbyssGrid.T.WATER:
 				_bat(batch, "pool", Transform3D(Basis.IDENTITY, c))
 			else:
-				_bat(batch, "floor", Transform3D(Basis.IDENTITY, c))
+				var fk := "floor_b" if (x * 7 + y * 13) % 5 == 0 and not ModelKit.piece("floor_b", K.theme).is_empty() else "floor"
+				_bat(batch, fk, Transform3D(Basis(Vector3.UP, PI / 2 * ((x + y * 3) % 4)), c)) # dalles tournées : moins de répétition
+				if K.theme == "station" and (x * 11 + y * 5) % 17 == 0 and g.tile(p) == AbyssGrid.T.FLOOR: # trappes de service
+					var hatch := ModelKit.node("props/trappe", 0.85, "width")
+					if hatch:
+						hatch.position = c + Vector3(0, -0.04, 0)
+						hatch.rotation.y = PI / 2 * ((x + y) % 2)
+						add_child(hatch)
+						_track(p, hatch)
 				if battle.in_evac(p): # pourtour du sas seulement
 					for d in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
 						if not battle.in_evac(p + d) and g.tile(p + d) != AbyssGrid.T.HULL:
@@ -528,13 +540,16 @@ func _build_map() -> void:
 				wall_nodes[g.idx(p)] = n
 				_track(p, n)
 	# sols, passerelles et bassins : un objet par type de dalle (MultiMesh)
-	var makers := {"floor": K.floor_tile.bind(false), "evac_edge": K.evac_edge, "deck_high": K.deck_high, "pool": K.pool,
-		"hull": K.hull.bind(false), "hull_c": K.hull.bind(false), "hull_w": K.hull.bind(true)}
+	var makers := {"floor": K.floor_tile.bind(false), "floor_b": K.floor_tile.bind(false), "evac_edge": K.evac_edge, "deck_high": K.deck_high, "pool": K.pool,
+		"hull": K.hull.bind(false), "hull_c": K.hull.bind(false), "hull_w": K.hull.bind(true),
+		"hull_x": K.hull.bind(false)}
 	for key in batch:
 		var mmi := K.batch(self, key, makers[key], batch[key])
 		if key.begins_with("hull"):
 			hull_mm[key] = mmi.multimesh
 			hull_fit[key] = ModelKit.piece(key, K.theme).get("xform", Transform3D.IDENTITY) # mise en place du modèle livré
+			if mmi.has_meta("proxy"):
+				hull_proxy[key] = mmi.get_meta("proxy")
 	# brouillard : deux couches (inconnu = masqué, mémorisé = assombri), une instance par case
 	for alpha in [1.0, 0.62]:
 		var mm := MultiMesh.new()
@@ -688,6 +703,9 @@ func _update_cutaway() -> void:
 		var yo := -PI / 4 if hn[2] == "hull_c" else 0.0 # angle : coin extérieur vers +X+Z dans le modèle
 		var b := Basis(Vector3.UP, atan2((hn[1] as Vector3).x, (hn[1] as Vector3).z) + yo).scaled(Vector3(1, cut if low else 1.0, 1))
 		mm.set_instance_transform(hn[3], Transform3D(b, (hn[0] as Node3D).position) * (hull_fit.get(hn[2], Transform3D.IDENTITY) as Transform3D))
+		if hull_proxy.has(hn[2]): # ombre simplifiée abaissée avec la paroi
+			var pr: MultiMeshInstance3D = hull_proxy[hn[2]]
+			pr.multimesh.set_instance_transform(hn[3], Transform3D(b, (hn[0] as Node3D).position) * (pr.get_meta("offset") as Transform3D))
 	dressing.update_cutaway(back)
 
 func _on_setting(key: String, v: Variant) -> void:
@@ -717,6 +735,12 @@ func _apply_quality(q: String) -> void:
 	get_viewport().msaa_3d = Viewport.MSAA_DISABLED if lite else Viewport.MSAA_2X
 	Engine.max_fps = 30 if lite else 0
 	sun.shadow_enabled = not lo
+	# modèles 3D répétés (MultiMesh) : vraies ombres en haute, ombres de boîtes en moyenne (bien moins de triangles)
+	for mmi in find_children("*", "GeometryInstance3D", true, false):
+		if mmi.has_meta("model"):
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if q == "haute" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		elif mmi.has_meta("shadow_proxy"):
+			mmi.visible = q == "moyenne"
 	RenderingServer.directional_shadow_atlas_set_size(2048 if q == "haute" else 1024, true)
 	world_env.environment.glow_enabled = not lo
 	# allégée : les lampes coupées sont compensées par une ambiance et un soleil plus forts (gratuits)

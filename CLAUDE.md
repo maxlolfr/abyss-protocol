@@ -45,6 +45,12 @@ Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA
 - Branchement : `view/model_kit.gd` (kit, couverts, objets, armes), `view/model_unit.gd` (squelette, animations, arme), test `tests/model_kit_test.gd` (CI).
 - Décors Port/Nid fusionnés (#11). Ne rien régénérer de payant.
 
+## Lot de modèles du 25/11 22 h 40 (branche `claude-b/modeles-lot2`, cette conversation)
+- 18 modèles rangés et branchés, tableau et écartés dans `docs/MODELES-3D.md` (fin). Réduction automatique des triangles : `tools/reduce_glb.py` + `godot/tests/lods.gd`.
+- Paroi contaminée ouest de Némésis : clé `hull_x` (`view/main.gd`, `view/model_kit.gd`).
+- Tests : 42 + 50 réussis. Coût : Nid 712 k primitives (à surveiller sur téléphone).
+- Publiée : PR #13 (branche `claude-b/modeles-lot2`), à valider par Max, ne pas fusionner sans lui. Optimisation téléphone : `docs/MODELES-3D.md` (fin).
+
 ## Prochaines étapes probables
 1. Suite de `docs/NEMESIS.md` : N1 à N4 faits (N4 = refonte visuelle avec les sprites des planches de Max, interface, performance). Inventaire des ressources : `Game-studio-ai/docs/studio/art/abyss-protocol/ASSET_INVENTORY.md`. Max a autorisé (25/11 15 h 36) la publication des versions allégées de ses créations dans le jeu public, jamais les originaux, zips, planches complètes ni prompts.
 2. Mesures d'i/s de Max (haute / moyenne / allégée) ; Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).

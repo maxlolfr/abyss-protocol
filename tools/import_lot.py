@@ -1,12 +1,13 @@
 """Import d'un lot ZIP de modèles 3D (Tripo, GLB) dans le jeu.
 
-Usage : python3 -I tools/import_lot.py lot.zip [lot2.zip ...] [--dry]
+Usage : python3 -I tools/import_lot.py lot.zip [lot2.zip ... | modele.glb ...] [--dry]
 
 Pour chaque fichier du lot :
 - reconnaît le nom (nomenclature de docs/MODELES-3D.md, accents, majuscules, espaces et tirets tolérés,
   ainsi que les intitulés de l'inventaire de Max : « Mur métallique standard », « Porte blindée »…) ;
 - compte les triangles et signale ceux qui dépassent le budget de leur catégorie (téléphone) ;
-- range une version ALLÉGÉE (textures 1024 px, 512 px pour les modules répétés, JPEG) dans
+- range une version ALLÉGÉE (textures 1024 px, 512 px pour les modules répétés, JPEG ; triangles réduits au budget
+  téléphone par la simplification de Godot, voir tools/reduce_glb.py) dans
   godot/assets/models/<catégorie>/<nom>.glb ; les originaux et le ZIP ne sont jamais copiés dans le dépôt ;
 - liste ce qui reste à classer (nom inconnu) et les formats à réexporter en GLB (FBX, OBJ…).
 Le ZIP est extrait dans un dossier temporaire neuf, jamais exécuté.
@@ -22,6 +23,7 @@ import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lighten_glb import lighten  # noqa: E402
+from reduce_glb import reduce  # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "godot", "assets", "models")
 
@@ -33,7 +35,7 @@ KIT += ["couvert_bas_%02d" % i for i in range(1, 13)] + ["couvert_haut_%02d" % i
 PROPS = ["terminal_vertical", "console_commandement", "panneau_electrique", "reacteur", "capsule_confinement",
          "caisse_militaire", "barricade", "conteneur", "reservoir", "equipement_labo", "tuyau_droit", "tuyau_coude",
          "technologie_humaine", "arche_alien", "structure_organique", "cristaux_violets", "roche", "oeuf_alien", "cocon",
-         "nid_alien", "masse_organique", "artefact_alien", "technologie_biomecanique", "ruche", "noyau_nid"]
+         "nid_alien", "masse_organique", "artefact_alien", "technologie_biomecanique", "ruche", "noyau_nid", "trappe", "passerelle_etroite"]
 UNITS = ["walker", "okafor", "lind", "moreau", "recrue_a", "recrue_b", "nereide", "carapace", "spectre", "brute",
          "leviathan"]
 WEAPONS = ["fusil_assaut", "fusil_precision", "arme_lourde", "pistolet", "arme_energie", "arme_alien", "grenade",
@@ -69,11 +71,28 @@ ALIASES = {
     "vehicule_de_transport": "triton", "drone_de_combat": "drone_combat", "robot_de_combat_quadrupede": "robot_quadrupede",
     "fusil_d_assaut": "fusil_assaut", "fusil_de_precision": "fusil_precision", "arme_energetique": "arme_energie",
     "arme_extraterrestre": "arme_alien", "kit_medical": "kit_medical", "neride": "nereide",
+    # noms des fichiers de Max (25/11 22 h 40) : humain = station, extra = extraterrestre (Nid)
+    "mur_humain": "mur_coque", "pilier_humain": "pilier_metallique", "porte_blinde_humain": "porte_blindee",
+    "porte_blindee_humain": "porte_blindee", "barricade_humaine": "couvert_bas_01", "barricade_humain": "couvert_bas_01",
+    "barricade_humain2": "couvert_bas_02", "barricade_humaine2": "couvert_bas_02", "mur_extra": "mur_biomecanique",
+    "pilier_extra": "pilier_biomecanique", "arche_extra": "arche_alien", "barricade_extra": "couvert_bas_01_nid",
+    "porte_alien_contamine": "mur_contamine",  # mur humain envahi, pas une porte
+    # noms anglais donnés par Tripo (« sci-fi terminal 3D model »…)
+    "sci_fi_terminal_3d": "terminal_vertical", "sci_fi_cargo_crate_3d": "caisse_militaire",
+    "sci_fi_control_panel_3d": "panneau_electrique", "sci_fi_control_console_3d": "console_commandement",
+    "industrial_staircase_3d": "escalier", "sci_fi_vault_door_3d": "porte_circulaire",
+    "industrial_pipeline_3d": "tuyau_droit", "sci_fi_power_core_3d": "reacteur",
+    "industrial_floor_grate_3d": "sol_grille", "sci_fi_canister_3d": "capsule_confinement",
+    "sci_fi_floor_tile_3d": "sol_dalle", "sci_fi_floor_panel_3d": "sol_dalle_02", "alien_organic_floor_3d": "sol_dalle_nid",
+    "purple_lava_stone_3d": "sol_dalle_02_nid", "metal_hatch_window_3d": "trappe",
+    "industrial_catwalk_3d": "passerelle_etroite",
 }
 # budget de triangles par catégorie (au-delà : avertissement ; le jeu reste jouable mais plus lourd sur téléphone)
 BUDGET = {"kit": 3000, "props": 6000, "units": 20000, "weapons": 3000, "crafts": 15000, "rooms": 20000}
 TILES = {"sol_dalle", "sol_grille", "sol_bassin", "plateforme", "mur_coque", "mur_angle", "mur_hublot", "cloison",
-         "garde_corps"}
+         "garde_corps", "mur_contamine", "mur_biomecanique", "mur_alien_b", "pilier_biomecanique"}
+# triangles gardés après simplification (modules répétés sur toute la carte : le poste le plus coûteux)
+REDUCE = {"tile": 1500, "kit": 3000, "props": 5000, "weapons": 3000}
 
 
 def norm(stem: str) -> str:
@@ -85,7 +104,8 @@ def norm(stem: str) -> str:
 
 def route(stem: str):
     """-> (catégorie, thème ou '', nom) ou None."""
-    s = norm(stem)
+    s = re.sub(r"^[0-9a-f]{8}_", "", norm(stem))  # préfixe ajouté par l'envoi dans la conversation
+    s = ALIASES.get(s, s)  # un alias peut porter un thème (barricade_extra -> couvert_bas_01_nid)
     theme = ""
     m = re.match(r"(.+?)_(port|nid|station)$", s)
     if m:
@@ -100,10 +120,13 @@ def route(stem: str):
     return CATS[s], theme, s + num
 
 
-def triangles(path: str) -> int:
+def glb_json(path: str) -> dict:
     b = open(path, "rb").read()
-    jlen = struct.unpack("<I", b[12:16])[0]
-    j = json.loads(b[20:20 + jlen])
+    return json.loads(b[20:20 + struct.unpack("<I", b[12:16])[0]])
+
+
+def triangles(path: str) -> int:
+    j = glb_json(path)
     acc = j.get("accessors", [])
     total = 0
     for mesh in j.get("meshes", []):
@@ -115,23 +138,30 @@ def triangles(path: str) -> int:
     return total
 
 
+def unzip(z: str, tmp: str) -> None:
+    with zipfile.ZipFile(z) as zf:
+        for info in zf.infolist():
+            if not info.flag_bits & 0x800:  # nom non marqué UTF-8 (ZIP de Mac/Windows) : accents à rétablir
+                try:
+                    info.filename = info.filename.encode("cp437").decode("utf-8")
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass
+            name = os.path.normpath(info.filename)
+            if info.is_dir() or name.startswith("..") or os.path.isabs(name) or "__MACOSX" in name:
+                continue
+            zf.extract(info, tmp)
+
+
 def main(args):
     dry = "--dry" in args
     zips = [a for a in args if not a.startswith("--")]
     done, unknown, other = [], [], []
     for z in zips:
         tmp = tempfile.mkdtemp(prefix="lot_")
-        with zipfile.ZipFile(z) as zf:
-            for info in zf.infolist():
-                if not info.flag_bits & 0x800:  # nom non marqué UTF-8 (ZIP de Mac/Windows) : accents à rétablir
-                    try:
-                        info.filename = info.filename.encode("cp437").decode("utf-8")
-                    except (UnicodeEncodeError, UnicodeDecodeError):
-                        pass
-                name = os.path.normpath(info.filename)
-                if info.is_dir() or name.startswith("..") or os.path.isabs(name) or "__MACOSX" in name:
-                    continue
-                zf.extract(info, tmp)
+        if z.lower().endswith(".glb"):  # modèle envoyé seul, hors ZIP
+            os.symlink(os.path.abspath(z), os.path.join(tmp, os.path.basename(z)))
+        else:
+            unzip(z, tmp)
         for dirpath, _, files in os.walk(tmp):
             for f in sorted(files):
                 stem, ext = os.path.splitext(f)
@@ -143,6 +173,10 @@ def main(args):
                 if ext != ".glb":
                     continue
                 r = route(stem)
+                req = glb_json(src).get("extensionsRequired", [])
+                if any(e in req for e in ("EXT_meshopt_compression", "KHR_draco_mesh_compression")):
+                    other.append(f + " (compressé : " + ", ".join(req) + ")")  # Godot ne sait pas le lire
+                    continue
                 tris = triangles(src)
                 if r is None:
                     unknown.append((f, tris))
@@ -153,19 +187,22 @@ def main(args):
                 rel = os.path.join(cat, theme, name) if theme and cat in ("kit", "props") else os.path.join(cat, name)
                 dst = os.path.join(ROOT, rel + ".glb")
                 over = tris > BUDGET[cat]
+                tile = name.split("_0")[0] in TILES
+                kept = tris
                 if not dry:
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
-                    lighten(src, dst, 512 if name.split("_0")[0] in TILES else 1024)
-                done.append((f, rel, tris, over, os.path.getsize(dst) if not dry else os.path.getsize(src)))
+                    lighten(src, dst, 512 if tile else 1024)
+                    _, kept = reduce(dst, dst, REDUCE["tile" if tile else cat] if (tile or cat in REDUCE) else tris)
+                done.append((f, rel, tris, kept, over, os.path.getsize(dst) if not dry else os.path.getsize(src)))
     print("## Lot importé" + (" (essai, rien d'écrit)" if dry else ""))
-    print("| Fichier reçu | Rangé sous | Triangles | Taille |")
+    print("| Fichier reçu | Rangé sous | Triangles reçus → gardés | Taille |")
     print("|---|---|---|---|")
-    for f, rel, tris, over, size in done:
-        print("| %s | `%s.glb` | %d%s | %.1f Mo |" % (f, rel, tris, " ⚠️ au-dessus du budget" if over else "", size / 1e6))
+    for f, rel, tris, kept, over, size in done:
+        print("| %s | `%s.glb` | %d%s → %d | %.1f Mo |" % (f, rel, tris, " ⚠️" if over else "", kept, size / 1e6))
     if unknown:
         print("\n**À classer (nom inconnu)** : " + ", ".join("%s (%d tri.)" % u for u in unknown))
     if other:
-        print("\n**À réexporter en GLB** : " + ", ".join(other))
+        print("\n**À réexporter en GLB sans compression** : " + ", ".join(other))
 
 
 if __name__ == "__main__":

@@ -23,11 +23,13 @@ const PROPS := "res://assets/models/props/%s.glb"
 ## modes : "width" (plus grande dimension horizontale), "height" (hauteur), "tile" (dalle : largeur, dessus à 0)
 const PIECES := {
 	"floor": ["sol_dalle", "tile", 1.0],
+	"floor_b": ["sol_dalle_02", "tile", 1.0], # variante semée sur une case sur cinq
 	"deck_high": ["plateforme", "width", 1.0],
 	"pool": ["sol_bassin", "tile", 1.0],
 	"hull": ["mur_coque", "width", 1.0],
 	"hull_w": ["mur_hublot", "width", 1.0],
 	"hull_c": ["mur_angle", "width", 1.0],
+	"hull_x": ["mur_contamine", "width", 1.0],
 	"wall": ["cloison", "width", 1.0],
 	"stairs": ["escalier", "width", 1.0],
 	"rail": ["garde_corps", "width", 1.0],
@@ -76,7 +78,8 @@ static func _exists(rel: String) -> bool:
 static func _load(rel: String) -> Node3D:
 	var p := _path(rel)
 	if p.begins_with("res://"):
-		return (load(p) as PackedScene).instantiate()
+		var ps := load(p) as PackedScene # null si l'import a échoué (GLB compressé meshopt/Draco) : pièce provisoire gardée
+		return ps.instantiate() if ps else null
 	var doc := GLTFDocument.new() # fichiers hors projet (tests) : chargement GLB à la volée
 	var st := GLTFState.new()
 	if doc.append_from_file(p, st) != OK:
@@ -199,13 +202,14 @@ static func is_alien(name: String) -> bool:
 			return true
 	return false
 
-## Objet 3D isolé (couvert, objet mural, décor) mis à l'échelle sur sa hauteur, ou null.
-static func node(rel: String, height: float) -> Node3D:
+## Objet 3D isolé (couvert, objet mural, décor) mis à l'échelle sur sa hauteur (ou sa largeur, mode "width",
+## pour les pièces plates : trappe, passerelle), ou null.
+static func node(rel: String, height: float, mode := "height") -> Node3D:
 	if rel == "" or not _exists(rel):
 		return null
-	var ck := "node|" + rel
+	var ck := "node|%s|%s" % [rel, mode]
 	if not _cache.has(ck):
-		var fm := _fit_mesh(rel, "height", 1.0)
+		var fm := _fit_mesh(rel, mode, 1.0)
 		_cache[ck] = fm
 	var fm: Dictionary = _cache[ck]
 	if fm.is_empty():
@@ -214,6 +218,7 @@ static func node(rel: String, height: float) -> Node3D:
 	mi.mesh = fm["mesh"]
 	mi.transform = fm["xform"]
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	mi.set_meta("model", true) # ombre portée seulement en qualité haute (main.gd, _apply_quality)
 	var holder := Node3D.new()
 	holder.scale = Vector3.ONE * height
 	holder.add_child(mi)

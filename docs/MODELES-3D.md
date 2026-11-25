@@ -79,3 +79,34 @@ Repères : pieds ou base au sol, face vers l'avant. L'échelle n'a pas d'importa
 - **Contrôle** : `tests/model_kit_test.gd` (faux GLB générés à la volée : échelle, orientation, couverts, néons, armes, coupe caméra), lancé par la CI.
 
 Registre des personnages existants : `godot/view/model_registry.gd` (table `TUNING` : hauteur, rotation).
+
+## Reçus le 25/11 (22 h 40 → 22 h 50), GLB envoyés un par un
+Import : `python3 -I tools/import_lot.py fichier.glb …` (accepte maintenant des GLB isolés, ignore le préfixe d'envoi). Les triangles sont réduits automatiquement par `tools/reduce_glb.py` (simplification de Godot, `godot/tests/lods.gd`) ; Godot s'arrête quand la forme se dégraderait, d'où quelques modèles au-dessus du budget.
+
+| Reçu | Rangé sous | Triangles reçus → gardés | Utilisé |
+|---|---|---|---|
+| mur_humain | `kit/station/mur_coque` | 11 732 → 1 540 | coque de la station |
+| porte alien contaminée (en fait un mur humain envahi) | `kit/station/mur_contamine` | 19 181 → 5 509 | paroi ouest de Némésis (clé `hull_x`) |
+| barricade_humaine, barricade_humain2 | `kit/station/couvert_bas_01`, `_02` | ≈ 10 000 → ≈ 2 600 | couverts bas |
+| barricade_extra | `kit/nid/couvert_bas_01` | 21 546 → 5 385 | couverts du Nid |
+| mur_extra, pilier_extra | `kit/nid/mur_biomecanique`, `pilier_biomecanique` | ≈ 21 000 → ≈ 3 200 | parois et murs du Nid |
+| arche_extra | `props/arche_alien` | 19 788 → 4 946 | objet peint k009_5 |
+| sci-fi terminal (2e envoi) | `props/terminal_vertical` | 9 014 → 4 506 | terminal |
+| control console, control panel, cargo crate, pipeline, power core, canister | `props/console_commandement`, `panneau_electrique`, `caisse_militaire`, `tuyau_droit`, `reacteur`, `capsule_confinement` | 4 000-11 000 → 3 000-4 500 | objets peints remplacés |
+| industrial staircase | `kit/station/escalier` | 8 266 → 2 216 | escaliers |
+| pilier_humain, porte_blinde_humain, vault door | `kit/station/pilier_metallique`, `porte_blindee`, `porte_circulaire` | → ≈ 2 500-2 900 | rangés, pas encore placés |
+| industrial floor grate | `kit/station/sol_grille` | 6 230 → 2 331 | rangé, **pas utilisé comme sol** : répété sur toute la carte il triplait le coût (1,4 M primitives) |
+
+Écartés : 1er « sci-fi terminal » (même maillage que pilier_humain, autre texture), 2e vault door (fichier identique), metal hatch window (plaque plate : trappe de sol ou hublot ? question à Max), industrial catwalk (passerelle de 0,33 × 1 m avec rambardes, 24 000 triangles : ne correspond pas au bloc `plateforme` 1 × 1 m).
+
+Coût de rendu (primitives, `campaign_battle_shot.gd`) avant → après : épave 222 k → 492 k, port 192 k ≈ 259 k, Nid 192 k → 712 k (murs du Nid à 3 200 triangles chacun). **À demander à Max** : exporter les modules répétés (murs, piliers, sols) depuis Tripo avec une limite de faces ≈ 1 500.
+
+### Sols reçus à 23 h (à réexporter)
+`sci-fi floor tile` (→ `sol_dalle` station), `sci-fi floor panel` (→ `sol_dalle_02`, variante semée une case sur cinq), `alien organic floor` (→ `sol_dalle` du Nid), `purple lava stone` (→ `sol_dalle_02` du Nid) : très bons budgets (330 à 470 triangles), mais **compressés** (gltfpack, `EXT_meshopt_compression`) : Godot ne les lit pas. Les réexporter depuis Tripo en GLB **sans compression** ; le jeu est déjà prêt (clés `floor` et `floor_b`, dalles tournées d'un quart de tour au hasard). L'outil d'import signale désormais ces fichiers au lieu de les ranger. `industrial floor grate` reçu deux fois (identique).
+
+### Optimisation téléphone (25/11, 23 h 15)
+- Murs, sols, piliers : un MultiMesh par type (déjà en place) ; maillage et matériaux d'un modèle chargés une seule fois (cache de `ModelKit`).
+- **Ombres** : en qualité haute, les modèles projettent leurs vraies ombres. En **moyenne** (défaut téléphone), les pièces répétées projettent l'ombre d'une **boîte à leurs dimensions** (12 triangles) et les objets isolés n'en projettent pas. En basse et allégée, il n'y a pas d'ombres (inchangé). Les ombres simplifiées des coques s'abaissent avec la paroi côté caméra.
+- Primitives mesurées (haute → moyenne → allégée) : épave 492 k → 306 k → 173 k, Nid 712 k → 384 k → 249 k, port 259 k → 246 k.
+- `trappe` (metal hatch window, plaque plate) : posée à plat sur une dalle de la station sur 17, 0,85 m de large (`ModelKit.node(…, "width")`). `passerelle_etroite` (catwalk 0,33 × 1 m) : rangée à sa taille réelle (14 400 triangles), en attente d'un emplacement.
+- Mesure sur appareil (i/s) : compteur dans le menu du jeu ; profils haute / moyenne / basse / allégée et baisse automatique sous 24 i/s (déjà en place).
