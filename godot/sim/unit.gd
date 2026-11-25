@@ -27,6 +27,8 @@ var watching := false
 var alive := true
 var kills := 0
 var facing := Vector2i(1, 1)
+var visual := "" # jeu de sprites / modèle (campagne : un soldat garde son apparence quel que soit son rang)
+var psi := false # casque psi : immunisé contre l'épuisement
 
 func tpl() -> Dictionary:
 	return AbyssData.UNITS[kind]
@@ -36,7 +38,7 @@ func vision() -> int:
 
 func to_dict() -> Dictionary:
 	var d := {}
-	for p in ["id", "name", "kind", "human", "hp", "max_hp", "tu", "max_tu", "acc", "react", "armor", "weapon", "wounds", "drain", "grenades", "ammo", "medkit", "carrying", "evacuated", "kneeling", "watching", "alive", "kills"]:
+	for p in ["id", "name", "kind", "human", "hp", "max_hp", "tu", "max_tu", "acc", "react", "armor", "weapon", "wounds", "drain", "grenades", "ammo", "medkit", "carrying", "evacuated", "kneeling", "watching", "alive", "kills", "visual", "psi"]:
 		d[p] = get(p)
 	d["cell"] = [cell.x, cell.y]
 	d["facing"] = [facing.x, facing.y]

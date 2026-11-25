@@ -25,6 +25,19 @@ Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA
 - Format de réponse demandé par Max : barre 🟩⬜ + % + coût estimé en tokens + temps estimé, à chaque message ; prévenir quand la fenêtre devient trop longue.
 - Outils locaux : Godot 4.7.2 à retélécharger dans /home/claude/bin (marche). Tests `tests/run_tests.gd` (42), équilibre `tests/balance.gd -- 80`, coût de rendu `tests/perf.gd -- <qualité>`, captures `tests/shot.gd` (5e argument = qualité), `tests/ui_shot.gd`, `tests/screens_shot.gd`, partie auto `tests/play_smoke.gd`.
 
+## Phase 3 (25/11 20 h 30 → 21 h 30, branche `claude-b/phase3`, PR à valider, ne pas fusionner sans Max)
+- Directive de Max : géoscape complet → base Neptune → campagne 3-5 missions reliée à Némésis → modèles GLB remplaçables. Qualité avant vitesse, aucune régression tactique.
+- Fait : `sim/strategy/` (moteur de campagne), `view/strategy/` (globe, 4 onglets, décisions), cartes Port et Nid, passage campagne ↔ combat (`view/session.gd`). Journal complet : `docs/PHASE3.md`. Décisions : `docs/DECISIONS.md`.
+- Tests : `tests/run_tests.gd` (42), `tests/strategy_tests.gd` (50), campagne robot `tests/campaign_smoke.gd -- 2 [parfait]` (lent, hors CI), captures `tests/strategy_shot.gd -- /tmp/x/`, `tests/campaign_battle_shot.gd -- out.png port|nid|epave`.
+- Max fournit les musiques dans la conversation suivante (OGG/MP3 nommés) : les brancher sur le titre, le géoscape, la base, les alertes.
+- Suite probable : retours de Max sur téléphone, équilibrage stratégique, décors Port/Nid (Tripo), musiques, branchement des catégories GLB autres que `units`.
+
+## Modèles 3D Tripo (25/11 20 h, PR #8 incluse dans la phase 3)
+- Max a un abonnement Tripo et modélise tout le jeu. Versions allégées (textures 1024 JPEG, `tools/lighten_glb.py`) dans `godot/assets/models/units/` : okafor (s2), lind (s3), nereide, brute. Registre : `view/model_registry.gd`, noms attendus : `docs/MODELES-3D.md`. Animations du modèle entier tant qu'il n'y a pas de squelette. Originaux jamais publiés.
+- `armored_soldier` = même maillage qu'Okafor (ancienne texture) : non utilisé. `alien_creature.fbx` : sans texture, espèce inconnue : non utilisé, question posée à Max.
+- À demander : versions avec auto-rig + animations Tripo (idle, marche, tir), armes en main ou armes séparées, Walker et Moreau, Carapace, Spectre.
+- Aperçus : `tests/model_preview.gd`, `tests/lineup.gd` (inclut la Brute).
+
 ## Prochaines étapes probables
 1. Suite de `docs/NEMESIS.md` : N1 à N4 faits (N4 = refonte visuelle avec les sprites des planches de Max, interface, performance). Inventaire des ressources : `Game-studio-ai/docs/studio/art/abyss-protocol/ASSET_INVENTORY.md`. Max a autorisé (25/11 15 h 36) la publication des versions allégées de ses créations dans le jeu public, jamais les originaux, zips, planches complètes ni prompts.
 2. Mesures d'i/s de Max (haute / moyenne / allégée) ; Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).

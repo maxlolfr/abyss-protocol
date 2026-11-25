@@ -20,10 +20,10 @@ func _initialize() -> void:
 	for x in range(-4, 5):
 		for z in range(-1, 2):
 			AbyssKit.spawn("floor", AbyssKit.floor_tile.bind(false), w, Vector3(x, 0, z))
-	var kinds := [["soldier", "s1"], ["soldier", "s2"], ["soldier", "s3"], ["nereide", ""], ["carapace", ""], ["spectre", ""]]
+	var kinds := [["soldier", "s1"], ["soldier", "s2"], ["soldier", "s3"], ["nereide", ""], ["carapace", ""], ["brute", ""], ["spectre", ""]]
 	for i in kinds.size():
 		var n := UnitVisuals.build(kinds[i][0], Callable(), kinds[i][1])
-		n.position = Vector3(-3.2 + i * 1.3, 0, 0)
+		n.position = Vector3(-3.6 + i * 1.2, 0, 0)
 		n.rotation_degrees.y = yaw
 		w.add_child(n)
 	var cam := Camera3D.new()

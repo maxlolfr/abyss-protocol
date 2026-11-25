@@ -20,10 +20,13 @@ var evac: Array[Vector2i] = []
 var map_id := "lab"
 var alarm_turn := -1 # tour où l'artefact a été pris (renforts différés)
 var explored := PackedByteArray() # brouillard de guerre côté joueur (1 = déjà vu)
+var mods := {} # effets de la recherche (campagne) : {"acc_vs": {espèce: bonus}}
 
-func _init(seed_value := "abyss", map := "lab") -> void:
+## squad / aliens / mods : fournis par la campagne (vides = mission seule, contenu d'AbyssData).
+func _init(seed_value := "abyss", map := "lab", squad: Array = [], aliens: Array = [], mods_in: Dictionary = {}) -> void:
 	seed_text = seed_value
 	map_id = map if AbyssData.MAPS.has(map) else "lab"
+	mods = mods_in
 	rng.seed = hash(seed_value)
 	var spawns := grid.parse(AbyssData.MAPS[map_id])
 	artifact = spawns["artifact"]
@@ -31,24 +34,65 @@ func _init(seed_value := "abyss", map := "lab") -> void:
 	for p in spawns["evac"]:
 		evac.append(p)
 	explored.resize(grid.w * grid.h)
-	for i in AbyssData.SQUAD.size():
-		var q: Dictionary = AbyssData.SQUAD[i]
-		var u := _make(q["id"], q["name"], "soldier", spawns["soldiers"][i])
-		u.weapon = q["weapon"]; u.acc = q["acc"]; u.react = q["react"]
-		u.max_tu = q["tu"]; u.tu = q["tu"]; u.max_hp = q["hp"]; u.hp = q["hp"]; u.grenades = q["grenades"]
-		u.medkit = q["medkit"]
-		u.ammo = AbyssData.WEAPONS[u.weapon]["mag"]
+	var roster: Array = squad if not squad.is_empty() else AbyssData.SQUAD
+	var cells: Array = spawns["soldiers"].duplicate()
+	for p in spawns["evac"]:
+		if not p in cells:
+			cells.append(p)
+	for i in mini(roster.size(), cells.size()):
+		var q: Dictionary = roster[i]
+		var u := _make(q["id"], q["name"], "soldier", cells[i])
+		u.weapon = q["weapon"]; u.acc = int(q["acc"]); u.react = int(q["react"])
+		u.max_tu = int(q["tu"]); u.tu = u.max_tu; u.max_hp = int(q["hp"]); u.hp = u.max_hp; u.grenades = int(q["grenades"])
+		u.medkit = int(q["medkit"])
+		u.armor = int(q.get("armor", u.armor))
+		u.psi = bool(q.get("psi", false))
+		u.visual = String(q.get("visual", ""))
+		u.ammo = AbyssData.WEAPONS[u.weapon].get("mag", 0)
 		units.append(u)
+	var foes: Array = spawns["aliens"]
+	if not aliens.is_empty():
+		foes = []
+		var free := _far_cells(cells, 7)
+		for i in aliens.size():
+			if i < spawns["aliens"].size():
+				foes.append([aliens[i], spawns["aliens"][i][1]])
+			elif not free.is_empty():
+				foes.append([aliens[i], free.pop_at(rng.randi_range(0, free.size() - 1))])
 	var n := 0
-	for a in spawns["aliens"]:
+	for a in foes:
 		n += 1
 		var u := _make("a%d" % n, AbyssData.UNITS[a[0]]["name"], a[0], a[1])
 		u.facing = Vector2i(-1, -1)
 		units.append(u)
 	# Les aliens ont capté l'arrivée de l'escouade : ils convergent vers le sas dès le départ.
 	alert = true
-	last_known["s1"] = spawns["soldiers"][0]
+	last_known[units[0].id] = cells[0]
 	update_explored()
+
+## Cases libres au sol, loin du point d'entrée de l'escouade (renforts de la campagne).
+func _far_cells(from: Array, dmin: int) -> Array:
+	var out := []
+	for y in grid.h:
+		for x in grid.w:
+			var p := Vector2i(x, y)
+			if grid.standable(p) and grid.z(p) == 0.0 and grid.tile(p) == AbyssGrid.T.FLOOR and p != artifact and not units.any(func(u): return u.cell == p):
+				if from.all(func(q): return absi(q.x - p.x) + absi(q.y - p.y) >= dmin):
+					out.append(p)
+	return out
+
+## Bilan pour la campagne : état de chaque soldat, créatures tuées, artefact récupéré.
+func result() -> Dictionary:
+	var sol := []
+	var kills := {}
+	for u in units:
+		if u.human:
+			sol.append({"id": u.id, "alive": u.alive, "hp": u.hp, "max_hp": u.max_hp, "kills": u.kills, "wounds": u.wounds,
+				"grenades": u.grenades, "medkit": u.medkit, "evacuated": u.evacuated})
+		elif not u.alive:
+			kills[u.kind] = int(kills.get(u.kind, 0)) + 1
+	var got := units.any(func(u): return u.human and u.carrying and (u.alive or u.evacuated))
+	return {"outcome": outcome, "turns": turn, "soldiers": sol, "kills": kills, "artifact": got or (outcome == "victory" and map_id == "nemesis")}
 
 func _make(id: String, nm: String, kind: String, at: Vector2i) -> AbyssUnit:
 	var t: Dictionary = AbyssData.UNITS[kind]
@@ -147,6 +191,8 @@ func shot_info(u: AbyssUnit, t: AbyssUnit, mode: String, from := Vector2i(-1, -1
 	c -= maxf(0.0, dist - AbyssData.RANGE_FROM) * (3.0 if mode == "snap" else 2.0)
 	c -= mini(4, u.wounds) * AbyssData.WOUND_PENALTY
 	c -= AbyssData.COVER_PENALTY[cover]
+	if u.human:
+		c += int(mods.get("acc_vs", {}).get(t.kind, 0))
 	info["chance"] = int(round(clampf(c, AbyssData.MIN_CHANCE, AbyssData.MAX_CHANCE)))
 	if u.tu < info["cost"]:
 		info["error"] = "UT insuffisantes"
@@ -188,7 +234,7 @@ func _resolve_shot(u: AbyssUnit, t: AbyssUnit, mode: String, ev: Array, reaction
 		last_known[u.id] = u.cell
 	if hit:
 		var raw := int(round(w["damage"] * (0.5 + rng.randf())))
-		_damage(t, maxi(0, raw - t.armor), ev, u, w.get("drain", 0))
+		_damage(t, maxi(0, raw - maxi(0, t.armor - int(w.get("pierce", 0)))), ev, u, 0 if t.psi else w.get("drain", 0))
 
 func _dir(d: Vector2i, fallback: Vector2i) -> Vector2i:
 	return Vector2i(signi(d.x), signi(d.y)) if d != Vector2i.ZERO else fallback
@@ -516,13 +562,14 @@ func to_dict() -> Dictionary:
 		walls[str(k)] = grid.wall_hp[k]
 	return {"version": 1, "map": map_id, "seed": seed_text, "rng": str(rng.state), "turn": turn, "side": side, "outcome": outcome, "alert": alert, "alarm_turn": alarm_turn,
 		"last_known": lk, "artifact": [artifact.x, artifact.y], "logs_done": logs_done, "tiles": Array(grid.tiles), "walls": walls,
-		"explored": Array(explored), "units": us}
+		"explored": Array(explored), "units": us, "mods": mods}
 
 static func from_dict(d: Dictionary) -> AbyssBattle:
 	if int(d.get("version", 0)) != 1:
 		return null
 	var b := AbyssBattle.new(String(d["seed"]), String(d.get("map", "lab")))
 	b.rng.state = int(String(d["rng"]))
+	b.mods = d.get("mods", {})
 	b.turn = int(d["turn"]); b.side = d["side"]; b.outcome = d["outcome"]; b.alert = d["alert"]; b.logs_done = d["logs_done"]
 	b.alarm_turn = int(d.get("alarm_turn", -1))
 	b.artifact = Vector2i(int(d["artifact"][0]), int(d["artifact"][1]))

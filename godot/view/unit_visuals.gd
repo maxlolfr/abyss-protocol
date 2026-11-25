@@ -9,6 +9,9 @@ static func build(kind: String, _mat: Callable = Callable(), variant := "") -> N
 	var path := "res://assets/units/%s.tscn" % kind
 	if ResourceLoader.exists(path):
 		return (load(path) as PackedScene).instantiate()
+	var mk := ModelUnit.key(kind, variant)
+	if mk != "":
+		return ModelUnit.build(mk) # vrais modèles 3D de Max (Tripo, view/model_unit.gd)
 	if SpriteUnit.has_set(kind, variant):
 		return SpriteUnit.build(kind, variant) # personnages des planches de Max (view/sprite_unit.gd)
 	return AbyssRig.build(kind, variant) # modèle articulé (Carapace : pas encore de planche)

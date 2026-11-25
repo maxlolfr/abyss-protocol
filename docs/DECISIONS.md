@@ -57,3 +57,12 @@ Escouade pilotée par une IA simple (sans genou, surveillance, grenade ni soin) 
 - Vérification des types TypeScript strict : OK.
 - Spikes Phaser et Godot ouverts dans Chromium : 0 erreur console.
 - **Pas encore testé** : interface tactile complète, appareils réels, build Vite en CI.
+
+## Phase 3 — campagne (25/11/2026, directive de Max 20 h 30)
+- **Géoscape dans Godot** (pas de Babylon.js) : un seul moteur, un seul export Web. Globe stylisé généré (`tools/gen_globe.py`, contours tracés à la main) en attendant mieux.
+- **Moteur de campagne pur** (`sim/strategy/`), même principe que le combat : commandes → événements, graine, sauvegarde versionnée (`user://abyss_campaign.json`).
+- **Une base** (Neptune, Açores) pour ce prototype ; extension mondiale reportée. Le Triton a une autonomie océanique (240 h).
+- **Interceptions à règles lisibles** (torpille puis riposte, 8 passes), chances affichées avant d'engager.
+- **Campagne récupérable** : sans l'artefact de Némésis, une cargaison alien en fournit un autre ; le Nid reste en place après un assaut repoussé ; un mois calme rend de la confiance.
+- **Écran d'entrée** = géoscape (`view/strategy/strategy.tscn`) ; « Mission Némésis seule » reste accessible, et les adresses `?map=` / `?autoplay` ouvrent toujours le combat direct.
+- **Modèles 3D** : registre `assets/models/<catégorie>/<nom>.glb` (voir `docs/MODELES-3D.md`).
