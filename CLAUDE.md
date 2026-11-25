@@ -19,6 +19,6 @@ Vision : `docs/MASTER_GDD.md`, `docs/ART_DIRECTION.md`, `docs/CLAUDE_START.md`. 
 Ordre de Max : première mission Némésis de très haute qualité, Godot 3D, DA V3.1, autonomie technique, pas de campagne avant validation, dépôt studio jamais public. Journal et décisions : `docs/NEMESIS.md`. Images rangées : PR #25 du studio (63 références, aucun personnage).
 
 ## Prochaines étapes probables
-1. Suite de `docs/NEMESIS.md` : N1 à N3 faits (PR #3) ; attendre les retours de Max sur téléphone, puis N4 (performance, équilibrage, destruction des props, Carapace).
+1. Suite de `docs/NEMESIS.md` : N1 à N4 faits (N4 = refonte visuelle avec les sprites des planches de Max, interface, performance). Inventaire des ressources : `Game-studio-ai/docs/studio/art/abyss-protocol/ASSET_INVENTORY.md`. Max a autorisé (25/11 15 h 36) la publication des versions allégées de ses créations dans le jeu public, jamais les originaux, zips, planches complètes ni prompts.
 2. Équilibrage Godot (l'escouade gagne trop en IA contre IA), Évacuer visible même si le soldat sélectionné n'est pas dans le sas (Phaser).
 3. Intégrer les références visuelles de ChatGPT/Gemini quand elles seront dans le studio ; vrais modèles via `godot/view/unit_visuals.gd` (`res://assets/units/<kind>.tscn`).

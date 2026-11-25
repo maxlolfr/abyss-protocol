@@ -29,6 +29,8 @@ static func mat(key: String) -> Material:
 			m.uv1_triplanar = true
 			m.uv1_triplanar_sharpness = 4.0
 			m.uv1_scale = Vector3.ONE * ({"hull": 0.5, "hazard": 2.0, "crate": 1.2}.get(key, 1.0))
+			if key == "floor":
+				m.albedo_color = Color(0.72, 0.74, 0.76) # sol plus sombre et plus neutre : le décor prime sur la grille
 		"screen", "screen_green":
 			m.albedo_texture = load(TEX % ["screen", "albedo"])
 			m.emission_enabled = true
@@ -212,6 +214,25 @@ class Piece:
 			st.commit(out)
 			out.surface_set_material(out.get_surface_count() - 1, AbyssKit.mat(k))
 		return out
+
+## Maillage partagé d'une pièce (construit une fois).
+static func mesh_of(key: String, make: Callable) -> ArrayMesh:
+	if not _meshes.has(key):
+		_meshes[key] = (make.call() as Piece).build()
+	return _meshes[key]
+
+## Pose toutes les copies d'une pièce en un seul objet (MultiMesh) : un appel de rendu au lieu d'un par case.
+static func batch(parent: Node3D, key: String, make: Callable, xforms: Array) -> MultiMeshInstance3D:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh_of(key, make)
+	mm.instance_count = xforms.size()
+	for i in xforms.size():
+		mm.set_instance_transform(i, xforms[i])
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = mm
+	parent.add_child(mi)
+	return mi
 
 ## Instancie une pièce (maillage partagé) ; `make` n'est appelé qu'une fois par clé.
 static func spawn(key: String, make: Callable, parent: Node3D, at: Vector3, yaw := 0.0) -> MeshInstance3D:
@@ -398,6 +419,31 @@ static func light_beam() -> Piece:
 	var q := QuadMesh.new()
 	q.size = Vector2(0.8, 3.2)
 	return Piece.new().add(q, Vector3(0, 1.4, 0.9), "beam", Vector3(-35, 0, 0))
+
+# ---------- objets des planches KIT / PROP de Max (sprites détourés, tools/extract_views.py) ----------
+
+const PROP := "res://assets/props/%s.png"
+## Couverts bas : [sprite, hauteur en m, sprite détruit]. Choix déterministe par case.
+const COVERS := [["p007_s1", 0.9, "p007_s4"], ["k005_1", 1.1, "k010_2"], ["p009_s1", 1.0, "p009_s4"], ["k006_4", 1.35, "k010_2"],
+	["k008_3", 1.5, "k010_2"], ["k006_6", 1.3, "k010_2"], ["k005_5", 1.0, "k010_2"], ["k008_6", 0.8, "k010_2"],
+	["p008_s2", 0.95, "k010_2"], ["p005_s2", 1.05, "k010_2"], ["k007_1", 1.1, "k010_2"], ["k007_5", 1.05, "k010_2"]]
+
+## Objet peint, debout face à la caméra (axe vertical), éclairé par la scène. `height` = hauteur à l'écran (m).
+static func prop(name: String, height: float, shadow := false) -> Sprite3D:
+	var t: Texture2D = load(PROP % name)
+	var sp := Sprite3D.new()
+	sp.texture = t
+	sp.pixel_size = height / float(t.get_height())
+	sp.offset = Vector2(0, t.get_height() / 2.0)
+	sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sp.shaded = false # éclairage peint de la planche conservé : lisible même dans les zones sombres
+	sp.double_sided = true
+	sp.alpha_cut = SpriteBase3D.ALPHA_CUT_OPAQUE_PREPASS
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	sp.modulate = Color(0.78, 0.84, 0.92) # teinte froide de la station
+	sp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sp.scale = Vector3(1, 1.18, 1) # compense le raccourci de la caméra plongeante (35°)
+	return sp
 
 ## Débris d'une cloison détruite.
 static func rubble_chunk(s: float) -> ArrayMesh:

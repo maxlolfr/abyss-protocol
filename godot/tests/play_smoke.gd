@@ -4,6 +4,7 @@ extends SceneTree
 func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://abyss_save.json"))
 	var main: Node = load("res://view/main.tscn").instantiate()
+	main.show_intro = false
 	root.add_child(main)
 	await process_frame
 	print("départ : ", main.battle.outcome, " carte ", main.battle.map_id, " tour ", main.battle.turn)

@@ -29,11 +29,13 @@ var toast: Label
 var fps_lbl: Label
 var actions := {}
 var squad := {}
+var bars := {} # id -> [barre PV, barre UT]
 var menu: PanelContainer
 var end_panel: PanelContainer
 var end_lbl: Label
 var _toast_t := 0.0
-var _settings := {"speed": 1.0, "shadows": true, "cine": true, "fps": true}
+var _settings := {"speed": 1.0, "shadows": true, "cine": true, "fps": true, "quality": "haute"}
+var quality_btn: Button
 
 func _ready() -> void:
 	var root := Control.new()
@@ -56,8 +58,28 @@ func _ready() -> void:
 	root.add_child(sq)
 	for id in ["s1", "s2", "s3", "s4"]:
 		var b := _button(sq, id, func(): select_unit.emit(id), 13)
-		b.custom_minimum_size = Vector2(112, 44)
+		b.custom_minimum_size = Vector2(158, 58)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		# portrait tiré des planches de Max + barres PV (vert) et UT (cyan)
+		b.icon = load("res://assets/ui/portraits/%s.jpg" % id)
+		b.expand_icon = true
+		b.add_theme_constant_override("icon_max_width", 44)
+		b.add_theme_constant_override("h_separation", 8)
+		var pair := []
+		for k in 2:
+			var bg := ColorRect.new()
+			bg.color = Color(0, 0, 0, 0.55)
+			bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bg.position = Vector2(60, 44 + k * 6)
+			bg.size = Vector2(90, 4)
+			b.add_child(bg)
+			var fg := ColorRect.new()
+			fg.color = GREEN if k == 0 else CYAN
+			fg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			fg.size = Vector2(90, 4)
+			bg.add_child(fg)
+			pair.append(fg)
+		bars[id] = pair
 		squad[id] = b
 	# haut droite : caméra + menu + i/s
 	var tr := HBoxContainer.new()
@@ -88,6 +110,11 @@ func _ready() -> void:
 		c.add_theme_font_size_override("font_size", 14)
 		c.toggled.connect(func(on): _settings[s[0]] = on; setting.emit(s[0], on))
 		mv.add_child(c)
+	quality_btn = _button(mv, "Qualité : haute", func(): pass, 14)
+	quality_btn.pressed.connect(func():
+		var q: String = {"haute": "moyenne", "moyenne": "basse", "basse": "haute"}[_settings["quality"]]
+		set_quality(q)
+		setting.emit("quality", q))
 	var sp := _button(mv, "Vitesse ennemie : x1", func(): pass, 14)
 	sp.pressed.connect(func():
 		_settings["speed"] = {1.0: 2.0, 2.0: 4.0, 4.0: 1.0}[_settings["speed"]]
@@ -97,7 +124,7 @@ func _ready() -> void:
 	# bas : aperçu sur une ligne + actions contextuelles
 	var bottom := VBoxContainer.new()
 	bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	bottom.offset_top = -100
+	bottom.offset_top = -118
 	bottom.offset_bottom = -6
 	bottom.offset_left = 130 + margin
 	bottom.offset_right = -margin
@@ -123,17 +150,17 @@ func _ready() -> void:
 	arow.add_theme_constant_override("separation", 4)
 	bottom.add_child(arow)
 	for m in ["snap", "aimed", "throw", "breach", "heal", "reload", "kneel", "watch", "interact", "evac", "end"]:
-		var b := _button(arow, m, func(): action.emit(m), 11)
-		b.custom_minimum_size = Vector2(72, 62)
+		var b := _button(arow, m, func(): action.emit(m), 12)
+		b.custom_minimum_size = Vector2(84, 70)
 		var ip := "res://assets/ui/icons/%s.png" % m # icônes UI-112 (planche de Max)
 		if ResourceLoader.exists(ip):
 			b.icon = load(ip)
 			b.expand_icon = true
 			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-			b.add_theme_constant_override("icon_max_width", 30)
+			b.add_theme_constant_override("icon_max_width", 34)
 		actions[m] = b
-	actions["end"].custom_minimum_size = Vector2(84, 46)
+	actions["end"].custom_minimum_size = Vector2(92, 70)
 	info = _label(root, "", 12, Color(0.75, 0.88, 0.94))
 	info.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	info.position = Vector2(margin, -22)
@@ -211,6 +238,11 @@ func flash(text: String, color := AMBER) -> void:
 	_toast_t = 2.2
 	toast.modulate.a = 1.0
 
+func set_quality(q: String) -> void:
+	_settings["quality"] = q
+	if quality_btn:
+		quality_btn.text = "Qualité : %s" % q
+
 func set_preview(text: String, can_confirm: bool) -> void:
 	preview.text = text
 	preview_box.visible = text != ""
@@ -225,8 +257,11 @@ func refresh(b: AbyssBattle, sel: AbyssUnit, mode: String, busy: bool) -> void:
 	for id in squad:
 		var u := b.unit(id)
 		var btn: Button = squad[id]
-		var state := "évacué" if u.evacuated else ("perdu" if not u.alive else "%d PV  %d UT" % [u.hp, u.tu])
-		btn.text = "%s%s\n%s" % [u.name.replace("Sgt. ", ""), " *" if u.carrying else "", state]
+		var state := "évacué" if u.evacuated else ("perdu" if not u.alive else "%d PV · %d UT" % [u.hp, u.tu])
+		btn.text = "%s%s\n%s\n" % [u.name.replace("Sgt. ", ""), " ◆" if u.carrying else "", state]
+		bars[id][0].size.x = 90.0 * clampf(float(u.hp) / u.max_hp, 0, 1) if u.alive else 0.0
+		bars[id][1].size.x = 90.0 * clampf(float(u.tu) / u.max_tu, 0, 1) if u.alive else 0.0
+		bars[id][0].color = GREEN if u.hp > u.max_hp * 0.5 else (AMBER if u.hp > u.max_hp * 0.25 else RED)
 		btn.disabled = not u.alive or u.evacuated or busy
 		btn.add_theme_stylebox_override("normal", _box(Color(0.06, 0.16, 0.2, 0.92) if sel == u else Color(0.04, 0.1, 0.15, 0.85), CYAN if sel == u else Color(0.22, 0.85, 0.94, 0.3)))
 	var ready := sel != null and sel.alive and not busy and b.side == "human" and b.outcome == "ongoing"
@@ -262,4 +297,15 @@ func show_end(b: AbyssBattle) -> void:
 	end_lbl.text = "%s\nArtefact : %s · Journal : %s\nTours : %d · Hostiles neutralisés : %d/3 · Soldats perdus : %d" % [
 		title, "récupéré" if carried or (b.outcome == "victory" and b.living(false).is_empty()) else "perdu", "oui" if b.logs_done else "non",
 		b.turn, 3 - b.living(false).size(), b.units.filter(func(u): return u.human and not u.alive).size()]
+	if carried and not end_panel.has_meta("research"):
+		end_panel.set_meta("research", true)
+		var card := TextureRect.new() # fiche de recherche RES-001 débloquée
+		card.texture = load("res://assets/ui/screens/research_res001.jpg")
+		card.custom_minimum_size = Vector2(400, 224)
+		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		end_lbl.get_parent().add_child(card)
+		end_lbl.get_parent().move_child(card, 0)
+		end_lbl.text += "\nRecherche débloquée : artefact alien inconnu (RES-001)"
+		end_panel.position.y -= 120
 	end_panel.visible = true

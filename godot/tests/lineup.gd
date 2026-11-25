@@ -17,13 +17,13 @@ func _initialize() -> void:
 	var we := WorldEnvironment.new(); we.environment = env; w.add_child(we)
 	var sun := DirectionalLight3D.new(); sun.rotation_degrees = Vector3(-40, 30, 0); sun.shadow_enabled = true; w.add_child(sun)
 	var fill := OmniLight3D.new(); fill.position = Vector3(0, 2.5, 3); fill.omni_range = 9; fill.light_color = Color("8fe8ff"); w.add_child(fill)
-	for x in range(-3, 4):
+	for x in range(-4, 5):
 		for z in range(-1, 2):
 			AbyssKit.spawn("floor", AbyssKit.floor_tile.bind(false), w, Vector3(x, 0, z))
-	var kinds := ["soldier", "soldier", "nereide", "carapace", "spectre"]
+	var kinds := [["soldier", "s1"], ["soldier", "s2"], ["soldier", "s3"], ["nereide", ""], ["carapace", ""], ["spectre", ""]]
 	for i in kinds.size():
-		var n := AbyssRig.build(kinds[i], "s2" if i == 1 else "")
-		n.position = Vector3(-2.8 + i * 1.4, 0, 0)
+		var n := UnitVisuals.build(kinds[i][0], Callable(), kinds[i][1])
+		n.position = Vector3(-3.2 + i * 1.3, 0, 0)
 		n.rotation_degrees.y = yaw
 		w.add_child(n)
 	var cam := Camera3D.new()

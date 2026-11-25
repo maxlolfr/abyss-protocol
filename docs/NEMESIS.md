@@ -24,7 +24,13 @@ Références : 63 images privées dans le studio (`Game-studio-ai/docs/studio/ar
   - Props : caisses gris acier à témoin cyan (PROP-007), barricades inclinées à bandes de danger (PROP-009).
   - Contrôle : `tests/play_smoke.gd` joue une partie complète avec tous les effets et vérifie qu'aucune erreur ne survient ; `tests/fxshot.gd` photographie les effets au ralenti.
 - **Équilibrage à faire** : en IA contre IA, l'escouade gagne Némésis ≈ 83 % du temps en 4 tours en moyenne. On règle après les essais de Max (l'IA joue différemment d'un humain).
-- N4 (prévu) — performance mobile (mesures de Max), réglages qualité automatiques, états de destruction des props, Carapace d'après sa future planche.
+- **N4 — refonte visuelle avec les ressources de Max** (mission du 25/11, 15 h 36 ; branche `claude-b/nemesis-n4-visuel`) :
+  - **Personnages** : Walker, Okafor (planches CHAR-HUM-001, HUM-002), Lind et Moreau (marine lourd CHAR-001, teintes différentes), Néréide (CHAR-002), Spectre (CHAR-003) détourés automatiquement (`tools/extract_views.py` : fond modélisé, ombre retirée, bords adoucis) en 4 vues ; `view/sprite_unit.gd` choisit face / 3/4 / profil / dos selon l'angle caméra (8 secteurs, miroir). Animations : respiration, marche, recul, impact rouge, génuflexion, mort (le corps bascule au sol). Carapace : pas de planche, modèle 3D assombri.
+  - **Décor** : 60 objets détourés des planches KIT-005 à 010 et PROP-005 à 010 ; 23 utilisés (couverts variés, terminal, conduites murales, excroissances aliennes, épaves quand un couvert est détruit). Peints, non éclairés par la scène pour rester lisibles.
+  - **Grille** : plus de cases pleines lumineuses ; voile à 7 % + contour fin de la zone (cyan = assez d'UT pour tirer, ambre = marche seule) ; sol plus sombre.
+  - **Interface** : écran titre (ENV-001), briefing (ENV-007, objectifs, fiches Néréide / Spectre / Carapace, escouade), écran de démarrage (ENV-002), portraits et barres PV/UT dans l'escouade, boutons d'action plus grands à icônes, fiche de recherche RES-001 au débriefing.
+  - **Performance** (mesurée hors téléphone, même vue de la salle entière) : appels de rendu par image **5 236 → 573** (qualité haute) / **414** (basse). Causes trouvées : ombres des lampes frontales et d'une lumière d'ambiance (chacune redessine toute la scène), une pièce = un objet par case. Corrigé : ombres réservées à la lumière principale, sols / passerelles / coque / garde-corps / brouillard regroupés (MultiMesh). Niveaux de qualité (Menu) : haute, moyenne (défaut sur téléphone : rendu 3D à 65 % de la résolution native), basse (45 %, sans ombres ni halo). **Les i/s sur téléphone restent à mesurer par Max.**
+- N5 (prévu) — mesures de Max, équilibrage, états de destruction intermédiaires, icônes d'état (UI-113), Carapace dès sa planche.
 
 ## Vérifier
 - Tests : `godot --headless --path godot -s res://tests/run_tests.gd`

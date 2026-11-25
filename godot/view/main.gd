@@ -6,13 +6,13 @@ extends Node3D
 const SAVE_PATH := "user://abyss_save.json"
 ## Habillage propre à chaque carte : lumières [position, couleur, portée, énergie, ombres] et contamination.
 const PROPS := {
-	"lab": {"lights": [[Vector3(2.5, 2.2, 2.5), Color("ffb547"), 5.0, 1.8, false], [Vector3(5, 2.6, 8.5), Color("8fe8ff"), 7.0, 1.3, true],
+	"lab": {"lights": [[Vector3(2.5, 2.2, 2.5), Color("ffb547"), 5.0, 1.8, false], [Vector3(5, 2.6, 8.5), Color("8fe8ff"), 7.0, 1.3, false],
 			[Vector3(11.5, 2.8, 3), Color("39d9ef"), 6.5, 1.2, false], [Vector3(13.5, 2.0, 8), Color("2ae8ff"), 4.0, 1.4, false],
 			[Vector3(14, 2.2, 12), Color("e5484d"), 4.5, 1.6, false], [Vector3(3, 1.4, 11.5), Color("9863f5"), 4.5, 1.9, false],
 			[Vector3(9.5, 2.6, 11), Color("ffcf8a"), 5.0, 0.9, false]],
 		"goo": [Vector2i(2, 11), Vector2i(3, 12), Vector2i(4, 11), Vector2i(1, 11), Vector2i(5, 12), Vector2i(2, 9)]},
 	# ENV-007 : cuve centrale cyan, mezzanines froides, sas ambre, alarme rouge, contamination violette à l'ouest
-	"nemesis": {"lights": [[Vector3(7.5, 2.4, 11.5), Color("ffb547"), 5.5, 1.8, false], [Vector3(7.5, 3.2, 3.5), Color("8fe8ff"), 7.5, 1.5, true],
+	"nemesis": {"lights": [[Vector3(7.5, 2.4, 11.5), Color("ffb547"), 5.5, 1.8, false], [Vector3(7.5, 3.2, 3.5), Color("8fe8ff"), 7.5, 1.5, false],
 			[Vector3(2.5, 3.0, 2.5), Color("39d9ef"), 5.5, 1.1, false], [Vector3(13.5, 3.0, 2.5), Color("39d9ef"), 5.5, 1.1, false],
 			[Vector3(13.5, 2.0, 8), Color("e5484d"), 4.5, 1.6, false], [Vector3(3.5, 1.4, 6.5), Color("9863f5"), 5.0, 1.9, false],
 			[Vector3(7.5, 2.6, 7.5), Color("ffcf8a"), 5.0, 0.8, false]],
@@ -31,6 +31,11 @@ var wall_nodes := {} # idx -> Node3D (cloisons et caisses destructibles)
 var cell_nodes := {} # idx -> Array[Node3D] (pour le brouillard)
 var hull_nodes: Array = [] # [Node3D, normale]
 var fog_quads := {}
+var world_env: WorldEnvironment
+var snow: CPUParticles3D
+var quality := "haute"
+var hull_mm := {} # coque en MultiMesh : la coupe côté caméra modifie les instances
+var fog_layers: Array[MultiMesh] = [] # [inconnu, mémorisé]
 var overlay := Node3D.new()
 var artifact_node: Node3D
 var selected: AbyssUnit
@@ -45,6 +50,7 @@ var pinch_d := 0.0
 var drag_moved := false
 var drag_from := Vector2.ZERO
 var mats := {}
+var show_intro := true # écran titre + briefing (désactivé par les captures et tests)
 
 func _ready() -> void:
 	battle = _load_or_new()
@@ -71,8 +77,19 @@ func _ready() -> void:
 		break
 	_sync()
 	_update_cutaway()
-	if battle.turn > 1 or battle.living(true).any(func(u): return u.tu < u.max_tu):
+	var mobile := OS.has_feature("web_android") or OS.has_feature("web_ios") or OS.has_feature("mobile")
+	_apply_quality(_query("q") if _query("q") in ["haute", "moyenne", "basse"] else ("moyenne" if mobile else "haute"))
+	hud.set_quality(quality)
+	var resumed := battle.turn > 1 or battle.living(true).any(func(u): return u.tu < u.max_tu)
+	if resumed:
 		hud.flash("Partie reprise (tour %d)" % battle.turn, AbyssHud.CYAN)
+	var auto: bool = OS.has_feature("web") and JavaScriptBridge.eval("new URLSearchParams(location.search).has('autoplay')")
+	if show_intro and not auto:
+		var sc := AbyssScreens.new()
+		add_child(sc)
+		sc.show_title(resumed, func():
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+			get_tree().reload_current_scene())
 	if OS.has_feature("web") and JavaScriptBridge.eval("new URLSearchParams(location.search).has('autoplay')"):
 		_autoplay()
 
@@ -166,6 +183,7 @@ func _build_env() -> void:
 	env.glow_bloom = 0.0
 	env.glow_hdr_threshold = 1.2
 	var we := WorldEnvironment.new()
+	world_env = we
 	we.environment = env
 	add_child(we)
 	# lumière froide filtrée par la surface, ombres dynamiques
@@ -186,11 +204,11 @@ func _build_env() -> void:
 		var c := SphereMesh.new(); c.radius = 1.0 + (i % 3) * 0.5; c.height = c.radius * (1.0 + (i % 4) * 0.4); c.radial_segments = 7; c.rings = 4
 		var rk := _mesh(self, c, Vector3(w / 2.0 + cos(a) * r, -3.2 + c.height * 0.3, h / 2.0 + sin(a) * r), rock)
 		rk.rotation = Vector3(i * 0.3, i * 1.1, i * 0.2)
-	var snow := CPUParticles3D.new()
+	snow = CPUParticles3D.new()
 	var sm := SphereMesh.new(); sm.radius = 0.02; sm.height = 0.04; sm.radial_segments = 4; sm.rings = 2
 	snow.mesh = sm
 	snow.material_override = _mat("snow", Color("c8e6f5"), 0, 1, Color("6fa8c0"), 0.6)
-	snow.amount = 140
+	snow.amount = 90
 	snow.lifetime = 14.0
 	snow.preprocess = 14.0
 	snow.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
@@ -202,9 +220,15 @@ func _build_env() -> void:
 	snow.position = Vector3(w / 2.0, 6, h / 2.0)
 	add_child(snow)
 
+func _bat(b: Dictionary, key: String, t: Transform3D) -> void:
+	if not b.has(key):
+		b[key] = []
+	b[key].append(t)
+
 func _build_map() -> void:
 	var g := battle.grid
 	var K := AbyssKit
+	var batch := {}
 	for y in g.h:
 		for x in g.w:
 			var p := Vector2i(x, y)
@@ -219,11 +243,21 @@ func _build_map() -> void:
 				var edge := x == 0 or y == 0 or x == g.w - 1 or y == g.h - 1
 				var win := edge and (x + y) % 3 == 0 and not ((x == 0 or x == g.w - 1) and (y == 0 or y == g.h - 1))
 				var n := Vector3(-1 if x == 0 else (1 if x == g.w - 1 else 0), 0, -1 if y == 0 else (1 if y == g.h - 1 else 0))
-				K.spawn("hull_w" if win else "hull", K.hull.bind(win), hn, Vector3.ZERO, atan2(n.x, n.z))
+				var hk := "hull_w" if win else "hull"
+				_bat(batch, hk, Transform3D(Basis(Vector3.UP, atan2(n.x, n.z)), hn.position))
 				if win and (x + y) % 2 == 0:
 					var beam := K.spawn("beam", K.light_beam, hn, Vector3.ZERO, atan2(-n.x, -n.z))
 					beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				hull_nodes.append([hn, n])
+				# équipements fixés à la paroi intérieure : conduites (PROP-006), excroissances aliennes (KIT-009)
+				if not win and edge and (x * 5 + y) % 4 == 0 and n.length() == 1.0:
+					var pipe := K.prop("p006_s1", 0.42)
+					pipe.position = -n * 0.56 + Vector3(0, 1.75, 0)
+					hn.add_child(pipe)
+				elif not win and edge and battle.map_id == "nemesis" and x == 0 and y >= 5 and y <= 8:
+					var growth := K.prop("k009_1", 1.1)
+					growth.position = -n * 0.55 + Vector3(0, 0.2, 0)
+					hn.add_child(growth)
+				hull_nodes.append([hn, n, hk, batch[hk].size() - 1])
 				continue
 			if t == AbyssGrid.T.STAIRS:
 				# volée continue : de la hauteur du voisin bas à celle du voisin haut
@@ -236,13 +270,12 @@ func _build_map() -> void:
 				_track(p, K.spawn("stairs%s" % z0, K.stairs.bind(z0, z1), self, Vector3(c.x, 0, c.z), -atan2(float(lo.y), float(lo.x))))
 				continue
 			if z >= 1.0:
-				_track(p, K.spawn("deck_high", K.deck_high, self, Vector3(c.x, 0, c.z)))
+				_bat(batch, "deck_high", Transform3D(Basis.IDENTITY, Vector3(c.x, 0, c.z)))
 			elif t == AbyssGrid.T.WATER:
-				_track(p, K.spawn("pool", K.pool, self, c))
+				_bat(batch, "pool", Transform3D(Basis.IDENTITY, c))
 			else:
 				var ev := battle.in_evac(p)
-				var f := K.spawn("floor_e" if ev else "floor", K.floor_tile.bind(ev), self, c, PI / 2 * ((x * 3 + y) % 4))
-				_track(p, f)
+				_bat(batch, "floor_e" if ev else "floor", Transform3D(Basis(Vector3.UP, PI / 2 * ((x * 3 + y) % 4)), c))
 			if t == AbyssGrid.T.WALL:
 				# orientation : la cloison suit ses voisines
 				var along_x := g.tile(p + Vector2i(1, 0)) in [AbyssGrid.T.WALL, AbyssGrid.T.HULL] or g.tile(p - Vector2i(1, 0)) in [AbyssGrid.T.WALL, AbyssGrid.T.HULL]
@@ -257,17 +290,37 @@ func _build_map() -> void:
 				n.position = c
 				add_child(n)
 				if p == battle.terminal:
-					K.spawn("terminal", K.console.bind(true), n, Vector3.ZERO, PI)
+					n.add_child(K.prop("k006_3", 1.25))
 					var o := OmniLight3D.new(); o.light_color = Color("52c99a"); o.omni_range = 2.5; o.light_energy = 1.2; o.position = Vector3(0, 1.1, 0.3)
 					n.add_child(o)
-				elif (x * 3 + y) % 5 == 0:
-					K.spawn("barricade", K.barricade, n, Vector3.ZERO, PI / 2 * ((x + y) % 4))
-				elif (x + y) % 2:
-					K.spawn("crate", K.crate, n, Vector3.ZERO, PI / 2 * ((x + 2 * y) % 4))
+					n.set_meta("wreck", "k010_2")
 				else:
-					K.spawn("console", K.console.bind(false), n, Vector3.ZERO, PI * ((x + y) / 2 % 2))
+					var cv: Array = K.COVERS[(x * 7 + y * 3) % K.COVERS.size()]
+					n.add_child(K.prop(cv[0], cv[1]))
+					n.set_meta("wreck", cv[2])
 				wall_nodes[g.idx(p)] = n
 				_track(p, n)
+	# sols, passerelles et bassins : un objet par type de dalle (MultiMesh)
+	var makers := {"floor": K.floor_tile.bind(false), "floor_e": K.floor_tile.bind(true), "deck_high": K.deck_high, "pool": K.pool,
+		"hull": K.hull.bind(false), "hull_w": K.hull.bind(true)}
+	for key in batch:
+		var mmi := K.batch(self, key, makers[key], batch[key])
+		if key.begins_with("hull"):
+			hull_mm[key] = mmi.multimesh
+	# brouillard : deux couches (inconnu = masqué, mémorisé = assombri), une instance par case
+	for alpha in [1.0, 0.62]:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		var q := PlaneMesh.new(); q.size = Vector2(1.0, 1.0)
+		mm.mesh = q
+		mm.instance_count = g.w * g.h
+		var mi := MultiMeshInstance3D.new()
+		mi.multimesh = mm
+		mi.material_override = _mat("fog%s" % alpha, Color("02060a"), 0, 1, Color.BLACK, alpha)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		fog_layers.append(mm)
+	var rails := {}
 	# garde-corps au bord de la passerelle (lecture des hauteurs)
 	for y in g.h:
 		for x in g.w:
@@ -277,7 +330,9 @@ func _build_map() -> void:
 			for d in [Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0)]:
 				var q: Vector2i = p + d
 				if g.z(q) < 1.0 and g.tile(q) != AbyssGrid.T.STAIRS and g.tile(q) != AbyssGrid.T.HULL:
-					_track(p, K.spawn("rail", K.railing, self, Vector3(x + 0.5, 0, y + 0.5), atan2(float(d.x), float(d.y))))
+					_bat(rails, "rail", Transform3D(Basis(Vector3.UP, atan2(float(d.x), float(d.y))), Vector3(x + 0.5, 0, y + 0.5)))
+	if rails.has("rail"):
+		K.batch(self, "rail", K.railing, rails["rail"])
 
 func _build_props() -> void:
 	# éclairages façon ENV-007 : ambre au sas, néons cyan du labo, alarme rouge, contamination violette
@@ -293,7 +348,10 @@ func _build_props() -> void:
 	# contamination violette autour du nid (sud-ouest), KIT-009
 	for p in PROPS[battle.map_id]["goo"]:
 		var gi: int = p.x * 31 + p.y
-		_track(p, AbyssKit.spawn("tendrils%d" % (gi % 3), AbyssKit.tendrils.bind(gi % 3), self, _cell_pos(p), gi * 0.7))
+		var gs := AbyssKit.prop(["k010_5", "k009_6", "k009_4"][gi % 3], [0.45, 0.7, 0.75][gi % 3])
+		gs.position = _cell_pos(p) + Vector3(0.18 * ((gi % 3) - 1), 0, 0.15 * ((gi % 2) * 2 - 1))
+		add_child(gs)
+		_track(p, gs)
 	# berceau de confinement Némésis à l'emplacement de l'artefact
 	var cr := AbyssKit.spawn("cradle", AbyssKit.cradle, self, _cell_pos(battle.artifact))
 	_track(battle.artifact, cr)
@@ -337,7 +395,7 @@ func _build_unit(u: AbyssUnit) -> void:
 		lamp.spot_angle = 30.0
 		lamp.light_energy = 1.3
 		lamp.light_color = Color("d8f4ff")
-		lamp.shadow_enabled = true
+		lamp.shadow_enabled = false # une ombre de projecteur = toute la scène redessinée : réservé à la lumière principale
 		var head: Node3D = body.find_child("Head", true, false)
 		(head if head else body).add_child(lamp)
 	var ring := TorusMesh.new(); ring.inner_radius = 0.36; ring.outer_radius = 0.42
@@ -381,6 +439,10 @@ func _update_cutaway() -> void:
 	for hn in hull_nodes:
 		var low: bool = (hn[1] as Vector3).dot(back) > 0.3
 		(hn[0] as Node3D).scale = Vector3(1, 0.12 if low else 1.0, 1)
+		var mm: MultiMesh = hull_mm[hn[2]]
+		var t := mm.get_instance_transform(hn[3])
+		t.basis = Basis(Vector3.UP, atan2((hn[1] as Vector3).x, (hn[1] as Vector3).z)).scaled(Vector3(1, 0.12 if low else 1.0, 1))
+		mm.set_instance_transform(hn[3], t)
 
 func _on_setting(key: String, v: Variant) -> void:
 	match key:
@@ -388,10 +450,22 @@ func _on_setting(key: String, v: Variant) -> void:
 		"cine": cine = v
 		"shadows":
 			sun.shadow_enabled = v
-			for id in unit_nodes:
-				var lamp: Node = unit_nodes[id].get_node_or_null("Body/Lamp")
-				if lamp:
-					lamp.shadow_enabled = v
+		"quality": _apply_quality(v)
+
+## Niveaux de qualité. Haute : tout ; Moyenne (défaut sur téléphone) : rendu 3D à 65 % de la résolution native
+## (les écrans mobiles sont à 3x) ; Basse : 45 %, sans ombres, sans halo, sans lampes frontales ni neige marine.
+func _apply_quality(q: String) -> void:
+	quality = q
+	get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	get_viewport().scaling_3d_scale = {"haute": 1.0, "moyenne": 0.65, "basse": 0.45}[q]
+	sun.shadow_enabled = q != "basse"
+	RenderingServer.directional_shadow_atlas_set_size(2048 if q == "haute" else 1024, true)
+	world_env.environment.glow_enabled = q != "basse"
+	snow.visible = q != "basse"
+	for id in unit_nodes:
+		var lamp: Node = unit_nodes[id].find_child("Lamp", true, false)
+		if lamp:
+			lamp.visible = q != "basse"
 
 # ---------- entrées tactiles ----------
 
@@ -567,19 +641,33 @@ func _clear_overlay() -> void:
 	for c in overlay.get_children():
 		c.queue_free()
 
+## Zone de déplacement : voile très léger + contour fin (cyan = il reste de quoi tirer, ambre = juste marcher).
+## La grille s'efface pour laisser voir le sol ; seuls les bords de zone sont tracés.
 func _show_reach() -> void:
 	if selected == null or not selected.alive or battle.side != "human" or battle.outcome != "ongoing":
 		return
 	var r := battle.reach(selected)
 	var keep := battle.shot_cost(selected, "snap")
-	var tile := BoxMesh.new(); tile.size = Vector3(0.84, 0.015, 0.84)
+	var zone := {}
 	for k in r["cost"]:
-		if r["cost"][k] == 0:
-			continue
-		var p := Vector2i(k % battle.grid.w, k / battle.grid.w)
-		var ok: bool = selected.tu - r["cost"][k] >= keep
-		var mi := _mesh(overlay, tile, _cell_pos(p) + Vector3(0, 0.015, 0), _mat("reachOk" if ok else "reachLow", Color("39d9ef") if ok else Color("ffb547"), 0, 1, Color("0e5868") if ok else Color("6a4012"), 0.22))
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if r["cost"][k] > 0:
+			zone[k] = 2 if selected.tu - r["cost"][k] >= keep else 1
+	var tile := PlaneMesh.new(); tile.size = Vector2(0.96, 0.96)
+	var edge_x := BoxMesh.new(); edge_x.size = Vector3(0.96, 0.012, 0.035)
+	var edge_z := BoxMesh.new(); edge_z.size = Vector3(0.035, 0.012, 0.96)
+	var g := battle.grid
+	for k in zone:
+		var p := Vector2i(k % g.w, k / g.w)
+		var ok: bool = zone[k] == 2
+		var col := Color("39d9ef") if ok else Color("ffb547")
+		var fill := _mesh(overlay, tile, _cell_pos(p) + Vector3(0, 0.012, 0), _mat("reachFill%s" % ok, col, 0, 1, Color.BLACK, 0.07))
+		fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var q: Vector2i = p + d
+			if zone.get(g.idx(q) if g.inside(q) else -1, 0) >= zone[k]:
+				continue
+			var e := _mesh(overlay, edge_z if d.x else edge_x, _cell_pos(p) + Vector3(d.x * 0.47, 0.02, d.y * 0.47), _mat("reachEdge%s" % ok, col, 0, 1, col * 0.45, 0.7))
+			e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 ## Boucliers de couverture autour de la case visée (cyan = total, ambre = partiel).
 func _cover_marks(c: Vector2i) -> void:
@@ -652,23 +740,19 @@ func _sync() -> void:
 ## Brouillard : cases jamais vues masquées, cases mémorisées assombries, cases visibles normales.
 func _fog() -> void:
 	var g := battle.grid
-	var tile := BoxMesh.new(); tile.size = Vector3(1.0, 0.02, 1.0)
-	var shade := _mat("fog", Color("02060a"), 0, 1, Color.BLACK, 0.62)
+	var hide := Transform3D(Basis.from_scale(Vector3.ZERO), Vector3.ZERO)
 	for k in cell_nodes:
-		var p := Vector2i(k % g.w, k / g.w)
-		var known := battle.explored[k] == 1
 		for n in cell_nodes[k]:
 			if is_instance_valid(n):
-				n.visible = known
-		var seen := known and battle.living(true).any(func(h): return g.can_see(h, p, 0.3))
-		if known and not seen:
-			if not fog_quads.has(k):
-				var q := _mesh(self, tile, _cell_pos(p) + Vector3(0, 0.03, 0), shade)
-				q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				fog_quads[k] = q
-			fog_quads[k].visible = true
-		elif fog_quads.has(k):
-			fog_quads[k].visible = false
+				n.visible = battle.explored[k] == 1
+	for k in g.w * g.h:
+		var p := Vector2i(k % g.w, k / g.w)
+		var known := battle.explored[k] == 1
+		var hull := g.tile(p) == AbyssGrid.T.HULL
+		var seen := known and not hull and battle.living(true).any(func(h): return g.can_see(h, p, 0.3))
+		var at := Transform3D(Basis.IDENTITY, _cell_pos(p) + Vector3(0, 0.035, 0))
+		fog_layers[0].set_instance_transform(k, at if not known and not hull else hide)
+		fog_layers[1].set_instance_transform(k, at if known and not seen and not hull else hide)
 
 func _refresh_hud() -> void:
 	hud.refresh(battle, selected, mode, busy)
@@ -981,6 +1065,9 @@ func _play(events: Array) -> void:
 ## Effondrement : le bloc se fragmente, les morceaux rebondissent et restent ; poussière brève.
 func _collapse(n: Node3D) -> void:
 	var base := n.position
+	var wreck := AbyssKit.prop(String(n.get_meta("wreck", "k010_2")), 0.55)
+	wreck.position = base
+	add_child(wreck)
 	_sparks(base + Vector3(0, 0.6, 0), Color("8aa0b0"), 24, 3.0, 0.7)
 	for i in 7:
 		var s := 0.16 + 0.06 * (i % 3)
