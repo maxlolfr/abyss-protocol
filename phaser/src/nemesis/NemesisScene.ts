@@ -68,6 +68,8 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
   private views = new Map<string, UnitView>();
   private objects = new Map<number, Occluder>();
   private occluders: Occluder[] = [];
+  private contact = false;
+  private chanceText?: Phaser.GameObjects.Text;
   private fog!: Phaser.GameObjects.Graphics;
   private overlay!: Phaser.GameObjects.Graphics;
   private aim!: Phaser.GameObjects.Graphics;
@@ -90,7 +92,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
 
   init(data: { engine: TacticalEngine; sfx: Samples; pixelRatio: number; quality: 'haute' | 'allegee' }) {
     this.engine = data.engine; this.sfx = data.sfx; this.pixelRatio = data.pixelRatio; this.quality = data.quality;
-    this.views.clear(); this.objects.clear(); this.occluders = []; this.alarms = []; this.labels = []; this.alert = false;
+    this.views.clear(); this.objects.clear(); this.occluders = []; this.alarms = []; this.labels = []; this.alert = false; this.contact = false; this.chanceText = undefined;
   }
 
   preload() {
@@ -123,6 +125,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
 
   create() {
     const s = this.engine.state;
+    this.sfx.music(this.engine.state.alienAlert ? "combat" : "explore");
     this.cameras.main.setBackgroundColor(0x02070b);
     this.lights.enable().setAmbientColor(0x44566c);
 
@@ -560,6 +563,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
   showMovePreview(u: Unit, p: MovePreview | null) {
     this.showReach(u);
     this.aim.clear();
+    this.chanceText?.setVisible(false);
     if (!p) return;
     const g = this.overlay;
     const pts = [toScreen(u.x, u.y), ...p.path.map(q => toScreen(q.x, q.y))];
@@ -578,9 +582,9 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
       const k = s.tiles[idx(s, last.x + dx, last.y + dy)];
       if (k !== 'wall' && k !== 'low') continue;
       const m = toScreen(last.x + dx * 0.42, last.y + dy * 0.42);
-      g.fillStyle(0x000000, 0.6).fillCircle(m.sx, m.sy - 18, 11);
-      g.fillStyle(k === 'wall' ? 0x5cf2ff : 0xffd27a, 1);
-      g.fillTriangle(m.sx - 7, m.sy - 24, m.sx + 7, m.sy - 24, m.sx, m.sy - 9);
+      g.fillStyle(0x000000, 0.7).fillCircle(m.sx, m.sy - 26, 17);
+      g.fillStyle(k === 'wall' ? 0x5cf2ff : 0xffd27a, 1); // plein (cyan) ou demi (jaune) couvert
+      g.fillTriangle(m.sx - 11, m.sy - 36, m.sx + 11, m.sy - 36, m.sx, m.sy - 13);
     }
   }
 
@@ -594,6 +598,8 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
     const n = 18;
     for (let i = 0; i < n; i += 2) g.lineBetween(a.sx + ((b.sx - a.sx) * i) / n, a.sy + ((b.sy - a.sy) * i) / n, a.sx + ((b.sx - a.sx) * (i + 1)) / n, a.sy + ((b.sy - a.sy) * (i + 1)) / n);
     g.strokeCircle(b.sx, b.sy, 20).lineBetween(b.sx - 28, b.sy, b.sx - 14, b.sy).lineBetween(b.sx + 14, b.sy, b.sx + 28, b.sy);
+    this.chanceText ??= this.add.text(0, 0, '', { fontFamily: 'Rajdhani, system-ui, sans-serif', fontSize: '34px', fontStyle: 'bold', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5, 1).setDepth(FX + 50);
+    this.chanceText.setText(`${chance} %`).setColor('#' + col.toString(16).padStart(6, '0')).setPosition(b.sx, b.sy - 70).setVisible(true);
   }
 
   showBlast(at: Vec | null, ok: boolean) {
@@ -608,7 +614,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
       }
   }
 
-  clearPreview() { this.overlay.clear(); this.aim.clear(); }
+  clearPreview() { this.overlay.clear(); this.aim.clear(); this.chanceText?.setVisible(false); }
 
   private diamond(g: Phaser.GameObjects.Graphics, x: number, y: number, k: number, stroke = false) {
     const w = (TW / 2) * k, h = (TH / 2) * k;
@@ -765,6 +771,13 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
           const u = this.engine.unit(e.unit)!;
           this.say('sonar');
           if (u.faction === 'alien') {
+            if (!this.contact) { // premier contact : alarme, message, musique de combat
+              this.contact = true;
+              this.sfx.music('combat');
+              this.say('alarm');
+              this.cameras.main.flash(260, 120, 40, 200);
+              banner('⚠ ALIEN REPÉRÉ', 'warn');
+            }
             this.say(u.kind === 'carapace' ? 'carapace' : u.kind === 'nereide' ? 'nereide' : 'spectre', { delay: 0.25 });
             this.say('v_contact', { delay: 0.5 });
           }
@@ -812,6 +825,13 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
           v.light?.setVisible(false);
           v.glow?.setVisible(false);
           this.splat(u, BLOOD[u.kind] ?? 0x8a1010, 1.4);
+          if (u.faction === 'alien' && this.speed < 99 && !this.reduceFx) { // coup fatal : ralenti et zoom bref
+            const cam = this.cameras.main, z = cam.zoom;
+            this.centerOn(u, 200);
+            cam.zoomTo(z * 1.2, 240, 'Quad.out');
+            this.tweens.timeScale = 0.45;
+            this.time.delayedCall(650, () => { this.tweens.timeScale = 1; cam.zoomTo(z, 450, 'Quad.inOut'); });
+          }
           const down = u.kind === 'carapace' ? 'carapace_dead' : `${v.key}_down`;
           if (this.textures.exists(down)) { // vraie pose au sol : petit affaissement puis fondu vers le gris
             v.body.setTexture(down).setAngle(0).setPosition(v.x, v.y + 4);

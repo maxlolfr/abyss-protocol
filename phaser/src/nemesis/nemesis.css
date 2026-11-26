@@ -24,3 +24,9 @@ button.primary { background: linear-gradient(180deg, #4fe6f8, #22a9c0); color: #
 
 #start .brief { background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: transparent; max-width: 60%; margin-left: 0; text-shadow: 0 1px 4px #000; }
 #start .kicker { display: none; }
+.tuto { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); z-index: 50; width: min(440px, 86vw); padding: 14px 16px; background: rgba(6, 16, 24, .94); border: 1px solid #3fd8f0; border-radius: 8px; color: #e6f4f8; box-shadow: 0 8px 30px rgba(0,0,0,.6); font-size: 16px; }
+.tuto b { color: #4fe3f7; letter-spacing: 1px; }
+.tuto p { margin: 6px 0 10px; line-height: 1.35; }
+.tuto div { display: flex; gap: 10px; justify-content: flex-end; }
+.tuto button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid #3fd8f0; background: #0b2430; color: #e6f4f8; }
+.tuto .next { background: #3fd8f0; color: #031018; font-weight: 700; }
