@@ -7,5 +7,5 @@ Max teste sur téléphone, pas d'ordinateur. Français. Économiser les tokens :
 - **Code** : simulation `phaser/src/sim/` (ne pas réécrire), scène `phaser/src/nemesis/NemesisScene.ts`, HUD `phaser/src/game/hud.ts`.
 - **Images** : `python3 -I tools/batch_images.py <dossier valide du studio>` détoure, corrige la pente (36° → 2:1), met à l'échelle et écrit `phaser/public/nemesis/{walls,units}` + `walls/anchors.json`. Ancien lot : `tools/build_phaser_nemesis.py`.
 - **Local sans npm** : Phaser 4.2.1 par `git clone --depth 1 --branch v4.2.1 --filter=blob:none --sparse https://github.com/phaserjs/phaser` (`sparse-checkout set dist types`), lien vers `phaser/node_modules/phaser` ; `tsc`, `esbuild`, `playwright` dans `/opt/npm-tools`, Chromium dans `/opt/pw-browsers` (SwiftShader). Vitest tourne en CI seulement.
-- **Publication** : la CI (`.github/workflows/build.yml`) publie GitHub Pages depuis `main` : https://maxlolfr.github.io/abyss-protocol/nemesis.html
+- **Publication** : la CI (`.github/workflows/build.yml`) publie GitHub Pages depuis `main` : https://maxlolfr.github.io/abyss-protocol/phaser/nemesis.html
 - Règles : branche `claude-b/...` + PR ; aucune dépense ; demander avant ElevenLabs. Historique détaillé : `docs/` (à n'ouvrir qu'en cas de besoin).
