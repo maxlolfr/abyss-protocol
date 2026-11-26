@@ -1,5 +1,7 @@
 # ABYSS PROTOCOL — reprise (lire en premier, rien d'autre sans besoin)
 
+> **SUSPENDU le 26/11/2026 (décision de Max).** Ne rien développer ni générer sans nouvelle décision explicite. Bilan, ressources réutilisables et architecture alternative : `docs/CLOTURE-2026-11-26.md`.
+
 Max teste sur téléphone, pas d'ordinateur. Français. Économiser les tokens : réponses courtes, ne relire que les fichiers utiles.
 
 - **Décision du 26/11 (7 h 52)** : Phaser seulement ; Godot (`godot/`) gelé, ne pas y toucher. Claude décide de la technique ; ChatGPT/Gemini ne font que les images, d'après `Game-studio-ai/docs/studio/art/abyss-protocol/CHARTE_PRODUCTION_IMAGES.md` (§0 méthode, §8 inventaire, §9 images demandées).
