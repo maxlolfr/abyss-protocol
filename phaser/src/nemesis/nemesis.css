@@ -30,3 +30,5 @@ button.primary { background: linear-gradient(180deg, #4fe6f8, #22a9c0); color: #
 .tuto div { display: flex; gap: 10px; justify-content: flex-end; }
 .tuto button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid #3fd8f0; background: #0b2430; color: #e6f4f8; }
 .tuto .next { background: #3fd8f0; color: #031018; font-weight: 700; }
+.stars { font-size: 34px; color: #ffcf4a; letter-spacing: 6px; text-shadow: 0 0 12px rgba(255, 190, 60, .6); margin: 2px 0 8px; }
+.stars span { color: rgba(255, 255, 255, .18); text-shadow: none; }

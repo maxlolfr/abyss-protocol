@@ -98,6 +98,7 @@ export function doHeal(u: Unit, t: Unit, ev: GameEvent[]): void {
   const amount = Math.min(RULES.medkitHeal, t.maxHp - t.hp);
   t.hp += amount;
   t.wounds = 0;
+  if (t.downed) { t.hp = Math.max(t.hp, RULES.medkitHeal); t.downed = 0; ev.push({ t: 'revive', unit: t.id }); }
   ev.push({ t: 'heal', unit: u.id, target: t.id, amount });
 }
 

@@ -44,6 +44,17 @@ export function applyDamage(s: BattleState, target: Unit, amount: number, ev: Ga
   target.drain += drain;
   ev.push({ t: 'damage', unit: target.id, amount, hp: Math.max(0, target.hp), wounded, drained: drain });
   if (target.faction === 'alien') s.alienAlert = true;
+  if (target.hp <= 0 && target.faction === 'human' && !target.downed && s.mission === 'nemesis') {
+    // à terre plutôt que mort : 2 tours pour être relevé par un allié (kit médical)
+    target.hp = 0; target.downed = 3; target.tu = 0; target.wounds = 0; target.kneeling = false; target.watching = false;
+    ev.push({ t: 'downed', unit: target.id, turns: 2 });
+    if (target.carrying) {
+      target.carrying = false;
+      s.objectives.artifact = { x: target.x, y: target.y };
+      ev.push({ t: 'drop', at: { x: target.x, y: target.y } });
+    }
+    return;
+  }
   if (target.hp <= 0) kill(s, target, ev, attacker);
 }
 

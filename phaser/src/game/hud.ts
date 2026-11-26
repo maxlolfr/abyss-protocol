@@ -551,8 +551,12 @@ export class Hud {
     const m = this.engine.summary();
     const retreat = m.outcome === 'defeat' && this.engine.soldiers.some(x => x.evacuated);
     const title = m.outcome === 'victory' ? 'MISSION ACCOMPLIE' : retreat ? 'RETRAITE : ARTEFACT PERDU' : 'ESCOUADE PERDUE';
+    const stars = (m.outcome === 'victory' ? 1 : 0) + (m.outcome === 'victory' && m.lost === 0 ? 1 : 0) + (m.logs ? 1 : 0);
+    const art = this.engine.state.mission === 'nemesis' ? `nemesis/fin-${m.outcome === 'victory' ? 'victoire' : 'defaite'}.webp` : '';
+    this.el.summary!.style.background = art ? `linear-gradient(90deg, rgba(3,8,12,.94) 0%, rgba(3,8,12,.75) 50%, rgba(3,8,12,.15) 85%), url(${art}) center right / cover no-repeat` : '';
     const yn = (b: boolean) => `<span class="${b ? 'ok' : 'ko'}">${b ? '✓' : '✗'}</span>`;
     this.el.summary!.innerHTML = `<div class="box"><h2 class="${m.outcome === 'victory' ? 'win' : 'lose'}">${title}</h2>
+      <div class="stars" aria-label="${stars} étoile(s) sur 3">${'★'.repeat(stars)}<span>${'★'.repeat(3 - stars)}</span></div>
       <div class="grid">
         <div class="row"><span>◆ Artefact</span>${yn(m.artifact)}</div><div class="row"><span>◇ Journal du terminal</span>${yn(m.logs)}</div>
         <div class="row"><span>Tours</span><b>${m.turns}</b></div><div class="row"><span>Hostiles neutralisés</span><b>${m.kills}/${m.aliens}</b></div>
