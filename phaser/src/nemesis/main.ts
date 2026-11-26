@@ -64,6 +64,29 @@ function toast(text: string) {
   t.appendChild(d); setTimeout(() => d.remove(), 3500);
 }
 
+/** Tutoriel en 4 bulles au premier lancement (passable, mémorisé). */
+function tutorial() {
+  try { if (localStorage.getItem('nemesis.tuto')) return; } catch { /* stockage indisponible */ }
+  const steps = [
+    ['Se déplacer', 'Touche une case pour voir le trajet, touche-la encore pour y aller. Chaque action coûte des UT (barre orange).'],
+    ['Se mettre à couvert', 'Les boucliers autour de la case : cyan = couvert plein, jaune = demi-couvert. Finis toujours ton tour à couvert.'],
+    ['Tirer', 'Touche un alien : le % de chance de toucher s\'affiche. Rapide coûte peu, Précis touche mieux.'],
+    ['Finir le tour', 'Quand tes soldats sont placés, « Fin du tour ». Mission : prendre l\'artefact violet et revenir au sas.'],
+  ];
+  let i = 0;
+  const box = document.createElement('div');
+  box.className = 'tuto';
+  const done = () => { box.remove(); try { localStorage.setItem('nemesis.tuto', '1'); } catch { /* rien */ } };
+  const show = () => {
+    const [t, d] = steps[i]!;
+    box.innerHTML = `<b>${i + 1}/4 · ${t}</b><p>${d}</p><div><button class="skip">Passer</button><button class="next">${i < 3 ? 'Suivant' : 'Jouer'}</button></div>`;
+    box.querySelector<HTMLButtonElement>('.skip')!.onclick = done;
+    box.querySelector<HTMLButtonElement>('.next')!.onclick = () => { if (++i < steps.length) show(); else done(); };
+  };
+  show();
+  document.body.appendChild(box);
+}
+
 function begin(e: TacticalEngine) {
   engine = e;
   const go = () => {
@@ -72,6 +95,7 @@ function begin(e: TacticalEngine) {
     if (!scene) { setTimeout(go, 30); return; } // gestionnaire de scènes occupé : on réessaie au tour suivant
     scene.events.once(Phaser.Scenes.Events.CREATE, () => {
       hud.bind(scene, e);
+      tutorial();
       window.__abyss = { engine: e, scene, hud };
       scene.onLowFps = () => {
         // baisse automatique : définition ×1, sans flou lumineux

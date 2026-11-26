@@ -22,6 +22,10 @@ export class Samples {
   private buffers = new Map<string, AudioBuffer>();
   private lastVoice = 0;
   private ambSrc: AudioBufferSourceNode | null = null;
+  private musBus!: GainNode;
+  private mus = new Map<string, { el: HTMLAudioElement; g: GainNode }>();
+  private curMusic = '';
+  private wantMusic = '';
   fxVolume = 0.8;
   ambVolume = 0.5;
 
@@ -37,7 +41,9 @@ export class Samples {
     this.fx = c.createGain(); this.fx.connect(comp);
     this.voice = c.createGain(); this.voice.connect(comp);
     this.amb = c.createGain(); this.amb.connect(comp);
+    this.musBus = c.createGain(); this.musBus.connect(comp);
     this.setVolumes(this.fxVolume, this.ambVolume);
+    if (this.wantMusic) this.music(this.wantMusic);
     void this.loadAll();
     // interruption (appel, verrouillage) : on coupe proprement et on reprend au retour
     document.addEventListener('visibilitychange', () => {
@@ -78,10 +84,33 @@ export class Samples {
   setVolumes(fx: number, amb: number): void {
     this.fxVolume = fx; this.ambVolume = amb;
     if (!this.ctx) return;
-    this.fx.gain.value = fx; this.voice.gain.value = Math.min(1, fx * 1.1); this.amb.gain.value = amb * 0.7;
+    this.fx.gain.value = fx; this.voice.gain.value = Math.min(1, fx * 1.1); this.amb.gain.value = amb * 0.7; this.musBus.gain.value = amb * 0.55;
   }
 
   has(k: string) { return this.buffers.has(k); }
+
+  /** Musique en boucle (public/nemesis/music/<nom>.m4a), fondu enchaîné ; attend le premier toucher (iOS). */
+  music(name: string): void {
+    this.wantMusic = name;
+    const c = this.ctx;
+    if (!c || this.curMusic === name) return;
+    const t = c.currentTime;
+    for (const [k, m] of this.mus) if (k !== name) {
+      m.g.gain.setTargetAtTime(0, t, 0.7);
+      setTimeout(() => { if (this.curMusic !== k) m.el.pause(); }, 4000);
+    }
+    let m = this.mus.get(name);
+    if (!m) {
+      const el = new Audio(`${this.base}music/${name}.m4a`);
+      el.loop = true; el.preload = 'auto';
+      const g = c.createGain(); g.gain.value = 0;
+      c.createMediaElementSource(el).connect(g); g.connect(this.musBus);
+      m = { el, g }; this.mus.set(name, m);
+    }
+    this.curMusic = name;
+    void m.el.play().catch(() => { /* lecture refusée : réessai au prochain appel */ this.curMusic = ''; });
+    m.g.gain.setTargetAtTime(1, t, 0.9);
+  }
 
   /** Joue un son ; renvoie false s'il n'est pas (encore) chargé. Les voix ne se chevauchent pas. */
   play(k: SampleKey, opts: { vol?: number; rate?: number; delay?: number } = {}): boolean {

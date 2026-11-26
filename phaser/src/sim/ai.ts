@@ -84,7 +84,9 @@ function actAlien(s: BattleState, a: Unit, ev: GameEvent[]): void {
     if (!foes.length) {
       if (!s.alienAlert) {
         // patrouille calme autour de sa position, en gardant des UT pour réagir
-        const goal = { x: a.x + int(s, 7) - 3, y: a.y + int(s, 7) - 3 };
+        // Némésis : la brute rôde vers le sas pour un contact rapide ; les autres restent près de leur poste
+        const sas = s.mission === 'nemesis' && UNIT_TEMPLATES[a.kind]!.role === 'brute' ? s.objectives.evac[0] : undefined;
+        const goal = sas ? { x: sas.x + int(s, 3) - 1, y: sas.y - 3 } : { x: a.x + int(s, 7) - 3, y: a.y + int(s, 7) - 3 };
         walkTo(s, a, goal, Math.ceil(a.tu / 2), ev);
         return;
       }
