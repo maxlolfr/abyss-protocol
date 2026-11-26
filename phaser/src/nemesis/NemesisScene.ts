@@ -12,6 +12,9 @@ import type { Samples, SampleKey } from './sfx';
 export const TW = 128, TH = 64;
 const WALL_H = { tall: 176, tall_lamp: 176, tall_red: 176, mid: 96, low: 22 } as const;
 type WallKey = keyof typeof WALL_H;
+const PANELS = ['droit', 'hublot', 'console', 'porte-sas'] as const;
+/** Variante de panneau par position (sinon mur lisse). */
+const PANEL_AT: Record<string, (typeof PANELS)[number]> = { 'y2': 'hublot', 'y6': 'hublot', 'y8': 'console', 'x3': 'hublot', 'x5': 'console', 'x7': 'porte-sas' };
 
 export const toScreen = (x: number, y: number, z = 0) => ({ sx: ((x - y) * TW) / 2, sy: ((x + y) * TH) / 2 - z });
 export function toTile(px: number, py: number) {
@@ -26,7 +29,7 @@ const LOOK: Record<string, { key: string; h: number; lift?: number; poses?: bool
   // soldiers : planches de poses de Max (1 debout, 2 marche, 3 genou, 4 visée, 5 debout bis), tournés vers la droite
   s1: { key: 'walker', h: 152, poses: true }, s2: { key: 'okafor', h: 158, poses: true },
   s3: { key: 'lind', h: 150, poses: true }, s4: { key: 'moreau', h: 146, poses: true },
-  nereide: { key: 'nereide', h: 162 }, carapace: { key: 'carapace', h: 150 }, spectre: { key: 'spectre', h: 140, lift: 34 },
+  nereide: { key: 'nereide', h: 162 }, carapace: { key: 'carapace', h: 156 }, spectre: { key: 'spectre', h: 140, lift: 34 },
 };
 const SHOT_COLOR: Record<string, number> = { rifle: 0x9ff3ff, pistol: 0xc8f6ff, harpoon: 0xffd27a, dart: 0x7dffc4, acid: 0xb6ff4d, psi: 0xc58bff };
 const SHOT_SOUND: Record<string, SampleKey> = { rifle: 'rifle', pistol: 'pistol', harpoon: 'harpoon', dart: 'alien', acid: 'acid', psi: 'psi' };
@@ -48,7 +51,7 @@ interface UnitView {
   glow?: Phaser.GameObjects.Image; key: string; scale: number; lift: number; x: number; y: number;
   flip: boolean; view: string; phase: number; walk: number; kick: number; dead: boolean; kneel: boolean;
   poses: boolean; aim: boolean; stride: number; tex: string;
-  back: boolean; straight: boolean; // de dos (s'éloigne de la caméra), plein dos
+  back: boolean; straight: boolean; hitUntil: number; // de dos (s'éloigne de la caméra), plein dos
 }
 
 interface Occluder { img: Phaser.GameObjects.Image; x: number; y: number }
@@ -95,11 +98,17 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
     this.load.setPath('nemesis/');
     this.load.image('floor', ['floor.webp', 'floor_n.webp']);
     for (const w of Object.keys(WALL_H)) this.load.image(`wall_${w}`, [`walls/${w}.webp`, `walls/${w}_n.webp`]);
+    // murs et pilier validés (tools/batch_images.py) : panneaux posés sur le bord extérieur de la coque
+    this.load.json('anchors', 'walls/anchors.json');
+    for (const k of PANELS) for (const side of ['x', 'y']) this.load.image(`p_${k}_${side}`, `walls/p_${k}_${side}.webp`);
+    this.load.image('p_pilier', 'walls/p_pilier.webp');
+    for (const k of ['walker', 'okafor']) for (const n of ['hit', 'down']) this.load.image(`${k}_${n}`, `units/${k}_${n}.webp`);
+    for (const n of ['idle', 'move', 'attack', 'dead']) this.load.image(`carapace_${n}`, `units/carapace_${n}.webp`);
     const props = new Set([...COVER_PROPS, ...MACHINES, ...WALL_DECOR.map(d => d[2]), 'p001_s4', 'k009_3', 'k006_4']);
     for (const p of props) this.load.image(p, `props/${p}.webp`);
     for (const k of ['walker', 'okafor', 'lind', 'moreau'])
       for (let i = 1; i <= 9; i++) this.load.image(`${k}_${i}`, `units/${k}_${i}.webp`);
-    for (const k of ['nereide', 'carapace', 'spectre'])
+    for (const k of ['nereide', 'spectre'])
       for (const v of ['front', 'q34', 'side', 'rear']) this.load.image(`${k}_${v}`, `units/${k}_${v}.webp`);
     for (const f of ['glow', 'spark', 'mote', 'bubble', 'shadow', 'smoke', 'muzzle', 'splat', 'ring', 'water_a', 'water_b'])
       this.load.image(`fx_${f}`, `fx/${f}.png`);
@@ -161,11 +170,32 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
     return 'mid';
   }
 
+  /** Coque du fond : panneaux sur le bord extérieur (x = -0,5 et y = -0,5), pilier à chaque bout. */
+  private buildPanels() {
+    const s = this.engine.state, A = this.cache.json.get('anchors') as Record<string, [number, number]>;
+    // un panneau couvre ~1,5 case (texture faite pour 1 case, @2x), hauteur ≈ 1,4 × un soldat
+    const VSTRETCH = 1.15;
+    const put = (key: string, gx: number, gy: number, depth: number, span: number) => {
+      const p = toScreen(gx, gy), a = A[key] ?? [0.5, 1];
+      this.add.image(p.sx, p.sy, key).setOrigin(a[0], a[1]).setScale(0.5 * span, 0.5 * span * VSTRETCH).setDepth(depth).setTint(0xc9d4e0);
+    };
+    const nx = Math.round((s.width - 1) / 1.5), ny = Math.round((s.height - 1) / 1.5);
+    const sx = (s.width - 1) / nx, sy = (s.height - 1) / ny;
+    for (let i = 0; i < ny; i++) put(`p_${PANEL_AT[`x${i}`] ?? 'droit'}_x`, -0.5, (i + 1) * sy - 0.5, depthOf(-1, i * sy, 0) - 50, sy);
+    for (let i = 0; i < nx; i++) put(`p_${PANEL_AT[`y${i}`] ?? 'droit'}_y`, (i + 1) * sx - 0.5, -0.5, depthOf(i * sx, -1, 0) - 50, sx);
+    const ps = (sx + sy) / 2;
+    put('p_pilier', -0.5, -0.5, depthOf(-1, -1, 0), ps);
+    put('p_pilier', s.width - 1.5, -0.5, depthOf(s.width - 2, -1, 0) + 10, ps);
+    put('p_pilier', -0.5, s.height - 1.5, depthOf(-1, s.height - 2, 0) + 10, ps);
+  }
+
   private buildWalls() {
     const s = this.engine.state;
+    this.buildPanels();
     for (let y = 0; y < s.height; y++)
       for (let x = 0; x < s.width; x++) {
         if (s.tiles[idx(s, x, y)] !== 'wall') continue;
+        if ((x === 0 || y === 0) && x < s.width - 1 && y < s.height - 1) continue; // remplacé par les panneaux
         const k = this.wallKind(x, y), h = WALL_H[k], p = toScreen(x, y);
         if (k === 'mid') {
           const img = this.propImage(MACHINES[(x * 3 + y) % MACHINES.length]!, x, y, 126, 150, 50).setSelfShadow(true, 0.5, 1 / 3);
@@ -260,14 +290,14 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
     const look = LOOK[u.faction === 'human' ? u.id : u.kind] ?? LOOK.s3!;
     const { sx, sy } = toScreen(u.x, u.y);
     const shadow = this.add.image(sx, sy + 4, 'fx_shadow').setDepth(4).setScale(u.kind === 'carapace' ? 1.5 : 0.95, u.kind === 'carapace' ? 1.4 : 0.95).setAlpha(0.75);
-    const first = look.poses ? `${look.key}_1` : `${look.key}_q34`;
+    const first = look.poses ? `${look.key}_1` : u.kind === 'carapace' ? 'carapace_idle' : `${look.key}_q34`;
     const tex = this.textures.get(first).getSourceImage() as HTMLImageElement;
     const scale = look.h / tex.height;
     const body = this.add.image(sx, sy, first).setOrigin(0.5, 0.97).setScale(scale).setLighting(true);
     const v: UnitView = {
       id: u.id, body, shadow, key: look.key, scale, lift: look.lift ?? 0, x: sx, y: sy, flip: false, view: 'q34',
       phase: (u.x * 1.7 + u.y * 2.3) % 6.28, walk: 0, kick: 0, dead: !u.alive, kneel: u.kneeling,
-      poses: !!look.poses, aim: false, stride: 0, tex: first, back: false, straight: false,
+      poses: !!look.poses, aim: false, stride: 0, tex: first, back: false, straight: false, hitUntil: 0,
     };
     if (u.faction === 'human') {
       v.light = this.lights.addLight(sx, sy, 230, 0xdff4ff, 0.85, 70); // lampe frontale
@@ -290,6 +320,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
       if (sx !== 0) v.flip = sx < 0;
       return;
     }
+    if (v.key === 'carapace') { if (sx !== 0) v.flip = sx < 0; return; }
     let view = 'q34', flip = false;
     if (sy > 0 && sx === 0) view = 'front';
     else if (sy < 0 && sx === 0) view = 'rear';
@@ -308,7 +339,8 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
     const n = v.kneel ? 3
       : v.back ? (v.straight && !v.aim ? (step ? 7 : 6) : (step ? 9 : 8))
       : v.aim || (u.watching && !v.walk) ? 4 : step ? 2 : 1;
-    const key = `${v.key}_${n}`;
+    const hit = this.time.now < v.hitUntil && this.textures.exists(`${v.key}_hit`);
+    const key = hit ? `${v.key}_hit` : `${v.key}_${n}`;
     if (key !== v.tex) { v.tex = key; v.body.setTexture(key); }
   }
 
@@ -599,6 +631,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
       if (u.kind === 'nereide' && !v.walk) angle = 1.6 * Math.sin(t * 1.3 + v.phase);
       if (u.kind === 'carapace') sx = 1 + 0.018 * Math.sin(t * 1.1 + v.phase);
       if (v.poses) this.pose(v, u);
+      else if (v.key === 'carapace') { const k = v.aim ? 'carapace_attack' : v.walk > 0 ? 'carapace_move' : 'carapace_idle'; if (k !== v.tex) { v.tex = k; v.body.setTexture(k); } }
       const kneel = v.kneel && !v.poses ? 0.84 : 1;
       v.body.setPosition(v.x - v.kick * (v.flip ? -1 : 1), v.y - v.lift - bob);
       v.body.setScale(v.scale * sx * (v.flip ? -1 : 1), v.scale * breathe * kneel).setAngle(angle);
@@ -757,6 +790,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
             this.time.delayedCall(50, () => v.body.setTint(0xff5040).setTintMode(Phaser.TintModes.MULTIPLY));
             this.time.delayedCall(220, () => v.body.clearTint());
             v.kick = -8;
+            v.hitUntil = this.time.now + 450;
             this.tweens.add({ targets: v, kick: 0, duration: 260, ease: 'Back.out' });
             this.splat(u, BLOOD[u.kind] ?? 0x8a1010, 0.8);
             const p = toScreen(u.x, u.y);
@@ -778,8 +812,15 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
           v.light?.setVisible(false);
           v.glow?.setVisible(false);
           this.splat(u, BLOOD[u.kind] ?? 0x8a1010, 1.4);
-          const fall = v.flip ? -84 : 84;
-          await this.tween({ targets: v.body, angle: fall, y: v.y - v.lift * 0.2 + 6, alpha: 0.9, duration: 520, ease: 'Quad.in' });
+          const down = u.kind === 'carapace' ? 'carapace_dead' : `${v.key}_down`;
+          if (this.textures.exists(down)) { // vraie pose au sol : petit affaissement puis fondu vers le gris
+            v.body.setTexture(down).setAngle(0).setPosition(v.x, v.y + 4);
+            v.body.setScale(v.scale * (v.flip ? -1 : 1), v.scale * 0.6);
+            await this.tween({ targets: v.body, scaleY: v.scale, duration: 260, ease: 'Back.out' });
+          } else {
+            const fall = v.flip ? -84 : 84;
+            await this.tween({ targets: v.body, angle: fall, y: v.y - v.lift * 0.2 + 6, alpha: 0.9, duration: 520, ease: 'Quad.in' });
+          }
           v.body.setTint(0x6a6f78).setDepth(depthOf(u.x, u.y, 20));
           this.tweens.add({ targets: v.shadow, alpha: 0, duration: 400 });
           break;

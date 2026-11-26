@@ -151,14 +151,14 @@ describe('IA et équilibrage (IA contre IA)', () => {
 });
 
 describe('mission Némésis', () => {
-  it('place 4 soldiers dans le sas et 3 aliens fixes, sans tirage', () => {
+  it('place 2 soldats dans le sas et 3 aliens fixes, sans tirage', () => {
     const a = createBattle('n1', 'nemesis'), b = createBattle('autre', 'nemesis');
     expect(a.mission).toBe('nemesis');
-    expect(a.units.filter(u => u.faction === 'human')).toHaveLength(4);
+    expect(a.units.filter(u => u.faction === 'human').map(u => u.name)).toEqual(['Sgt. Walker', 'Okafor']);
     const al = a.units.filter(u => u.faction === 'alien');
     expect(al.map(u => u.kind).sort()).toEqual(['carapace', 'nereide', 'spectre']);
     expect(al.map(u => [u.x, u.y])).toEqual(b.units.filter(u => u.faction === 'alien').map(u => [u.x, u.y]));
-    expect(al.find(u => u.kind === 'carapace')!.maxHp).toBe(90);
+    expect(al.find(u => u.kind === 'carapace')!.maxHp).toBe(62);
     expect(a.objectives.artifact).toEqual({ x: 7, y: 1 });
     expect(a.objectives.terminal).toEqual({ x: 13, y: 1 });
   });

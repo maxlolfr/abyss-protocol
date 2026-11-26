@@ -37,7 +37,8 @@ export function createBattle(seed: string, mission = 'lab'): BattleState {
     objectives: { artifact: m.artifact, terminal: m.terminal, logsDone: false, evac: m.evac },
     outcome: 'ongoing', alienAlert: false, lastKnown: {}, commands: [],
   };
-  SQUAD.forEach((q, i) => s.units.push(makeUnit(q.id, q.name, 'soldier', m.soldierSpawns[i]!, {
+  const squad = mission === 'nemesis' ? SQUAD.slice(0, 2) : SQUAD; // salle de démo : Walker et Okafor
+  squad.forEach((q, i) => s.units.push(makeUnit(q.id, q.name, 'soldier', m.soldierSpawns[i]!, {
     weapon: q.weapon, accuracy: q.accuracy, reactions: q.reactions, maxTu: q.tu, tu: q.tu, maxHp: q.hp, hp: q.hp,
     medkit: q.medkit, grenades: q.grenades, ammo: WEAPONS[q.weapon]!.mag,
   })));
@@ -48,7 +49,7 @@ export function createBattle(seed: string, mission = 'lab'): BattleState {
   };
   if (m.fixedAliens.length) {
     m.fixedAliens.forEach((a, i) => {
-      const h = HARDENED[a.kind];
+      const h = squad.length >= 4 ? HARDENED[a.kind] : undefined; // à 2 soldats : aliens aux valeurs de base
       alien(i, a.kind, a.at, h ? { maxHp: h.hp, hp: h.hp, maxTu: h.tu, tu: h.tu, accuracy: h.accuracy } : {});
     });
     updateExplored(s);
