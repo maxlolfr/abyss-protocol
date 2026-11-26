@@ -27,6 +27,30 @@ export const LAB_MAP = [
   '########################',
 ];
 
+/** Mission Némésis (même plan que godot/sim/data.gd, ENV-007) : salle de confinement, artefact dans la cuve
+ * au fond, mezzanines (=) et escaliers (/) des deux côtés, terminal sur la mezzanine est, bassins techniques,
+ * sas au sud. Version Phaser : la simulation TS est encore plate (les hauteurs sont propres à Godot), les
+ * mezzanines sont donc des planchers en caillebotis au niveau du sol. X : coque, k : caisse sur la mezzanine,
+ * N/C/P : Néréide, Carapace, Spectre à des places fixes. */
+export const NEMESIS_MAP = [
+  'XXXXXXXXXXXXXXXX',
+  'X=k=..cD.c..=T=X',
+  'X=P=....C...===X',
+  'X===..#..#..===X',
+  'X===.c.....c===X',
+  'X./..c....c../.X',
+  'X...c..##..c...X',
+  'X~~..........~NX',
+  'X~~..........~~X',
+  'X..c...#.#..c..X',
+  'X.....SES......X',
+  'X.....EEE......X',
+  'X.....SES......X',
+  'XXXXXXXXXXXXXXXX',
+];
+
+export const MAPS: Record<string, readonly string[]> = { lab: LAB_MAP, nemesis: NEMESIS_MAP };
+
 export interface ParsedMap {
   width: number;
   height: number;
@@ -36,17 +60,22 @@ export interface ParsedMap {
   artifact: Vec;
   terminal: Vec;
   evac: Vec[];
+  /** Aliens placés par la carte (N, C, P), sinon tirés au sort parmi les « ? ». */
+  fixedAliens: Array<{ kind: string; at: Vec }>;
 }
+
+const FIXED: Record<string, string> = { N: 'nereide', C: 'carapace', P: 'spectre' };
 
 export function parseMap(rows: readonly string[]): ParsedMap {
   const height = rows.length;
   const width = rows[0]!.length;
-  const out: ParsedMap = { width, height, tiles: [], soldierSpawns: [], alienSpots: [], artifact: { x: 0, y: 0 }, terminal: { x: 0, y: 0 }, evac: [] };
+  const out: ParsedMap = { width, height, tiles: [], soldierSpawns: [], alienSpots: [], artifact: { x: 0, y: 0 }, terminal: { x: 0, y: 0 }, evac: [], fixedAliens: [] };
   rows.forEach((row, y) => {
     if (row.length !== width) throw new Error(`ligne ${y} : largeur ${row.length} au lieu de ${width}`);
     [...row].forEach((ch, x) => {
       const p = { x, y };
-      out.tiles.push(ch === '#' ? 'wall' : ch === '~' ? 'water' : 'cxT'.includes(ch) ? 'low' : 'floor');
+      out.tiles.push('#X'.includes(ch) ? 'wall' : ch === '~' ? 'water' : 'cxkT'.includes(ch) ? 'low' : 'floor');
+      if (FIXED[ch]) out.fixedAliens.push({ kind: FIXED[ch]!, at: p });
       if (ch === 'S') out.soldierSpawns.push(p);
       if (ch === 'S' || ch === 'E') out.evac.push(p);
       if (ch === '?') out.alienSpots.push(p);

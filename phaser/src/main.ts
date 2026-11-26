@@ -3,10 +3,11 @@ import Phaser from 'phaser';
 import './style.css';
 import { SaveManager, TacticalEngine } from './sim';
 import { BattleScene } from './game/BattleScene';
+import type { TacticalView } from './game/view';
 import { Hud } from './game/hud';
 import { audio } from './game/audio';
 
-declare global { interface Window { __abyss?: { engine: TacticalEngine; scene: BattleScene | null; hud: Hud } } }
+declare global { interface Window { __abyss?: { engine: TacticalEngine; scene: (Phaser.Scene & TacticalView) | null; hud: Hud } } }
 
 const saves = new SaveManager(localStorage);
 const game = new Phaser.Game({

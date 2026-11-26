@@ -1,9 +1,8 @@
 // Interface DOM permanente + contrôleur tactile. Aucune fenêtre modale hormis le récapitulatif final.
 // Le HUD n'écrit jamais dans l'état : il prévisualise, puis envoie une Command au moteur et fait rejouer les événements.
-import type { BattleScene } from './BattleScene';
+import type { TacticalView } from './view';
 import { RULES, WEAPONS, type Command, type FireMode, type TacticalEngine, type Unit, type Vec } from '../sim';
 import { audio } from './audio';
-import { toScreen } from './iso';
 
 type Tone = 'info' | 'warn' | 'good';
 type Armed = 'snap' | 'aimed' | 'grenade' | 'heal' | null;
@@ -71,7 +70,7 @@ const SKELETON = `
 <div id="summary" hidden></div>`;
 
 export class Hud {
-  private scene!: BattleScene;
+  private scene!: TacticalView;
   private engine!: TacticalEngine;
   private selected = '';
   private pending: Pending | null = null;
@@ -142,7 +141,7 @@ export class Hud {
   }
 
   /** Branche le HUD sur une (nouvelle) bataille. */
-  bind(scene: BattleScene, engine: TacticalEngine) {
+  bind(scene: TacticalView, engine: TacticalEngine) {
     this.scene = scene; this.engine = engine;
     this.locked = false; this.pending = null; this.armed = null;
     scene.onTap = p => this.tap(p);
@@ -478,8 +477,9 @@ export class Hud {
     const c = p.cmd;
     const v = c.type === 'move' || c.type === 'throw' ? c.to : c.type === 'shoot' || c.type === 'heal' ? this.engine.unit(c.target) : null;
     if (!v) return null;
-    const cam = this.scene.cameras.main, { sx, sy } = toScreen(v.x, v.y);
-    return { x: (sx - cam.worldView.x) * cam.zoom, y: (sy - cam.worldView.y) * cam.zoom };
+    const cam = this.scene.cameras.main, { sx, sy } = this.scene.worldOf(v);
+    const k = this.scene.pixelRatio ?? 1;
+    return { x: ((sx - cam.worldView.x) * cam.zoom) / k, y: ((sy - cam.worldView.y) * cam.zoom) / k };
   }
 
   private render() {

@@ -5,13 +5,14 @@ import { RULES, WEAPONS, idx, inEvac, visibleTiles } from '../sim';
 import { LOW_H, TH, dir8, depthOf, toScreen, toTile } from './iso';
 import { makeTextures } from './textures';
 import { audio, type Sfx } from './audio';
+import type { TacticalView } from './view';
 
 interface UnitView { img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; dir: number; light?: Phaser.GameObjects.Light; bob: number }
 
 const SHOT_COLOR: Record<string, number> = { rifle: 0x9ff3ff, pistol: 0xc8f6ff, harpoon: 0xffe08a, dart: 0x7dffc4, acid: 0xc6ff4d, psi: 0xc58bff };
 const UNIT_LIFT: Record<string, number> = { spectre: 14 };
 
-export class BattleScene extends Phaser.Scene {
+export class BattleScene extends Phaser.Scene implements TacticalView {
   engine!: TacticalEngine;
   onTap: (p: Vec) => void = () => {};
   speed = 1;
@@ -153,6 +154,8 @@ export class BattleScene extends Phaser.Scene {
     if (ms === 0) this.cameras.main.centerOn(sx, sy);
     else this.cameras.main.pan(sx, sy, ms, 'Sine.easeInOut');
   }
+
+  worldOf(p: Vec) { return toScreen(p.x, p.y); }
 
   select(id: string | null) { this.selected = id; this.drawMarks(); }
 
