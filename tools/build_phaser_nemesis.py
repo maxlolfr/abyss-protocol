@@ -77,7 +77,7 @@ def bake_floor(rows):
     mat[center] = 1
     mat[np.isin(ch, list("=k/PT"))] = 2
     mat[np.isin(ch, list("ES"))] = 3
-    mat[np.isin(ch, list("X#"))] = 4
+    mat[ch == "X"] = 4  # sous les machines (#) on garde un vrai sol (visible quand elles deviennent transparentes)
     names = ["floor", "plate", "grate", "hazard", "hull"]
     alb = [tex(n + "_albedo") for n in names]
     nrm = [tex(n + "_normal") for n in names]
@@ -337,7 +337,8 @@ def sounds():
 
 UNITS = {"nereide": "nereide", "carapace": "carapace", "spectre": "spectre"}
 # Planches de poses de Max (26/11) découpées par tools/cut_pose_sheet.py, masters hors dépôt :
-# 1 debout, 2 marche, 3 à genou, 4 visée, 5 debout (variante). Les personnages regardent vers la droite.
+# 1 debout, 2 marche, 3 à genou, 4 visée, 5 debout (variante), tournés vers la droite ;
+# planches de dos (26/11, 7 h) : 6 dos, 7 dos en marche, 8 trois-quarts dos, 9 trois-quarts dos en marche (vers la droite).
 POSES_DIR = os.path.expanduser(os.environ.get("ABYSS_POSES", "~/abyss_masters/poses"))
 SOLDIERS = ["walker", "okafor", "lind", "moreau"]
 POSE_H = 270  # hauteur de la pose debout dans le jeu (px, avant zoom caméra)
@@ -349,10 +350,17 @@ def poses(meta):
         return
     out = {}
     for k in SOLDIERS:
-        ims = [Image.open(os.path.join(POSES_DIR, "%s_%d.png" % (k, i))).convert("RGBA") for i in range(1, 6)]
-        s = POSE_H / ims[0].height  # même échelle pour toutes les poses : la pose à genou est naturellement plus basse
+        ims = [Image.open(os.path.join(POSES_DIR, "%s_%d.png" % (k, i))).convert("RGBA") for i in range(1, 10)
+               if os.path.exists(os.path.join(POSES_DIR, "%s_%d.png" % (k, i)))]
+        s = POSE_H / ims[0].height  # même échelle (planches de dos : ramenées à la même hauteur debout) pour toutes les poses : la pose à genou est naturellement plus basse
         sizes = []
         for i, im in enumerate(ims, 1):
+            if i >= 6:  # planche de dos : autre cadrage, on cale la hauteur debout sur la pose 1
+                r = POSE_H / im.height
+                im = im.resize((max(1, round(im.width * r)), POSE_H), Image.LANCZOS)
+                save(im, "units/%s_%d.webp" % (k, i), 90)
+                sizes.append(im.size)
+                continue
             im = im.resize((max(1, round(im.width * s)), max(1, round(im.height * s))), Image.LANCZOS)
             save(im, "units/%s_%d.webp" % (k, i), 90)
             sizes.append(im.size)

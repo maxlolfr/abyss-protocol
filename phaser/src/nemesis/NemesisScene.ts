@@ -48,6 +48,7 @@ interface UnitView {
   glow?: Phaser.GameObjects.Image; key: string; scale: number; lift: number; x: number; y: number;
   flip: boolean; view: string; phase: number; walk: number; kick: number; dead: boolean; kneel: boolean;
   poses: boolean; aim: boolean; stride: number; tex: string;
+  back: boolean; straight: boolean; // de dos (s'éloigne de la caméra), plein dos
 }
 
 interface Occluder { img: Phaser.GameObjects.Image; x: number; y: number }
@@ -97,7 +98,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
     const props = new Set([...COVER_PROPS, ...MACHINES, ...WALL_DECOR.map(d => d[2]), 'p001_s4', 'k009_3', 'k006_4']);
     for (const p of props) this.load.image(p, `props/${p}.webp`);
     for (const k of ['walker', 'okafor', 'lind', 'moreau'])
-      for (let i = 1; i <= 5; i++) this.load.image(`${k}_${i}`, `units/${k}_${i}.webp`);
+      for (let i = 1; i <= 9; i++) this.load.image(`${k}_${i}`, `units/${k}_${i}.webp`);
     for (const k of ['nereide', 'carapace', 'spectre'])
       for (const v of ['front', 'q34', 'side', 'rear']) this.load.image(`${k}_${v}`, `units/${k}_${v}.webp`);
     for (const f of ['glow', 'spark', 'mote', 'bubble', 'shadow', 'smoke', 'muzzle', 'splat', 'ring', 'water_a', 'water_b'])
@@ -266,7 +267,7 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
     const v: UnitView = {
       id: u.id, body, shadow, key: look.key, scale, lift: look.lift ?? 0, x: sx, y: sy, flip: false, view: 'q34',
       phase: (u.x * 1.7 + u.y * 2.3) % 6.28, walk: 0, kick: 0, dead: !u.alive, kneel: u.kneeling,
-      poses: !!look.poses, aim: false, stride: 0, tex: first,
+      poses: !!look.poses, aim: false, stride: 0, tex: first, back: false, straight: false,
     };
     if (u.faction === 'human') {
       v.light = this.lights.addLight(sx, sy, 230, 0xdff4ff, 0.85, 70); // lampe frontale
@@ -282,7 +283,10 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
   /** Orientation à 4 vues (+ miroir) d'après le déplacement en cases. Planches : profil et 3/4 regardent vers la gauche. */
   private face(v: UnitView, dx: number, dy: number) {
     const sx = Math.sign(dx - dy), sy = Math.sign(dx + dy);
-    if (v.poses) { // planches de face uniquement : on choisit le côté (pas encore de vue de dos, voir doc)
+    if (v.poses) { // planches de face (tournées à droite) et de dos (3/4 dos tourné à droite, plein dos)
+      if (sx === 0 && sy === 0) return;
+      v.back = sy < 0;
+      v.straight = v.back && sx === 0;
       if (sx !== 0) v.flip = sx < 0;
       return;
     }
@@ -300,7 +304,10 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
 
   /** Pose courante d'un soldat : genou, visée (tir, surveillance), marche (2 images alternées), debout. */
   private pose(v: UnitView, u: Unit) {
-    const n = v.kneel ? 3 : v.aim || (u.watching && !v.walk) ? 4 : v.walk > 0 ? (v.stride % 2 ? 2 : 1) : 1;
+    const step = v.walk > 0 && v.stride % 2 === 1;
+    const n = v.kneel ? 3
+      : v.back ? (v.straight && !v.aim ? (step ? 7 : 6) : (step ? 9 : 8))
+      : v.aim || (u.watching && !v.walk) ? 4 : step ? 2 : 1;
     const key = `${v.key}_${n}`;
     if (key !== v.tex) { v.tex = key; v.body.setTexture(key); }
   }

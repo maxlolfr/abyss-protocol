@@ -7,6 +7,10 @@ Branche de travail : `experiment/phaser4` (PR #15, brouillon, ne pas fusionner s
 - CI verte (30 tests Vitest + build). Test Playwright `e2e/nemesis.spec.ts` rallongé (machine sans GPU), dernier passage non vérifié.
 - Publication d'une page jouable (artefact) refusée par une règle de sécurité : lien jouable = fusion de #15 (GitHub Pages) ou autorisation de Max.
 
+## Originaux sauvegardés (dépôt studio privé, PR « planches de poses et dalles de sol (26/11) »)
+- `Game-studio-ai` branche `claude-b/abyss-planches-26-11` : `docs/studio/art/abyss-protocol/concepts/characters/poses-2026-11-26/` (8 planches face + dos, 36 découpes) et `concepts/floors/2026-11-26/` (6 dalles). **Ne plus les redemander à Max.**
+- Poses en jeu : 1 debout, 2 marche, 3 genou, 4 visée, 5 debout bis, 6 dos, 7 dos marche, 8 trois-quarts dos, 9 trois-quarts dos marche.
+
 ## Fichiers sources (hors dépôt, perdus entre sessions)
 - Les versions allégées utilisées par le jeu sont dans le dépôt (`phaser/public/nemesis/`, `assets2d/tiles/`). Relancer `tools/build_phaser_nemesis.py` sans les masters garde les sprites existants.
 - Pour retoucher les poses : renvoyer les planches → `tools/cut_pose_sheet.py planche.jpg ~/abyss_masters/poses nom` (Moreau : `--tol 6.5` ; Walker pose 3 : effacer le bout de canon en haut à gauche).
@@ -14,8 +18,8 @@ Branche de travail : `experiment/phaser4` (PR #15, brouillon, ne pas fusionner s
 
 ## Attendu de Max (prochaine session)
 1. Murs iso dans le style des dalles : mur droit face gauche + face droite (~2,5 dalles de haut), coin, hublot, console encastrée, porte du sas, mur contaminé, version mi-hauteur.
-2. Soldats de dos et 3/4 dos ; tir, touché, à terre ; aliens en 5 poses.
-3. À confirmer : brun à pieuvre = Walker, blond = Lind, médecin = Moreau, Ω = Okafor.
+2. Soldats : tir (recul), touché, à terre ; aliens en 5 poses. (Dos et 3/4 dos : reçus et intégrés le 26/11 à 7 h.)
+3. Identités des 4 soldats : confirmées par les planches (pieuvre = Walker, blond = Lind, médecin = Moreau, Ω = Okafor).
 
 ## Pour intégrer les murs
 Remplacer les blocs `wall_*` générés dans `NemesisScene.buildWalls` (clés `tall`, `tall_lamp`, `tall_red`, `low`) par les images de Max détourées (fond blanc → `tools/cut_pose_sheet.py` ou détourage simple), ancrées sur le coin bas de la case.

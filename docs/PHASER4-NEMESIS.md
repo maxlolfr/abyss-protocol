@@ -28,14 +28,13 @@ jouable au doigt, sur la même simulation TypeScript et le même HUD que le prot
 - **Mobile** : canvas à la définition réelle (×2 max) puis réduit en CSS, baisse automatique (×1, sans bloom) si < 40 i/s pendant 6 s, pause audio en arrière-plan, message si le contexte WebGL est perdu.
 
 ## Limites connues (honnêtes)
-- Soldats : **pas de vue de dos** → quand ils s'éloignent de la caméra, ils restent de face (retournés gauche/droite). Le retournement inverse l'épaule de l'arme.
+- Soldats : vues de dos et 3/4 dos intégrées (26/11, 7 h). Encore retournées gauche/droite (l'épaule de l'arme s'inverse) ; pas de pose de visée de dos (on garde le 3/4 dos).
 - Aliens : pas encore d'images d'animation (tir, impact, mort = effets et rotation, pas de vraies poses).
 - Mort : sprite couché par rotation (provisoire).
 - Mezzanines **plates** côté TypeScript (hauteurs = Godot uniquement) : caillebotis au sol, pas d'escalier réel.
 - Mesures i/s : uniquement en émulation logicielle (SwiftShader, 2–25 i/s, non représentatif). **Mesures réelles à faire sur iPhone 15 Pro Max / Honor Magic V5 / iPad.**
 
 ## Ressources à demander en priorité (une planche par ligne, même style que celles du 26/11)
-1. Les 4 soldats **de dos et de 3/4 dos** (debout, marche) — fond gris uni, personnages séparés.
 2. Les 4 soldats : **tir (recul)**, **touché**, **à terre**.
 3. Néréide, Carapace, Spectre : debout, déplacement, attaque, touché, mort (5 poses, fond uni).
 4. Salle Némésis : rambardes de mezzanine et escalier isométriques détourés (pour retrouver les hauteurs).
