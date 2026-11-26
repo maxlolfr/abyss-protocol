@@ -817,6 +817,30 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
           await this.wait(220);
           break;
         }
+        case 'downed': {
+          const v = this.views.get(e.unit)!, u = this.engine.unit(e.unit)!;
+          this.say('v_wounded');
+          banner(`${name(e.unit)} à terre ! Relève-le (Soin, au contact) avant 2 tours`, 'warn');
+          v.dead = true; v.light?.setVisible(false);
+          if (this.textures.exists(`${v.key}_down`)) {
+            v.body.setTexture(`${v.key}_down`).setAngle(0).setPosition(v.x, v.y + 4);
+            v.body.setScale(v.scale * (v.flip ? -1 : 1), v.scale * 0.6);
+            await this.tween({ targets: v.body, scaleY: v.scale, duration: 260, ease: 'Back.out' });
+          }
+          v.body.setDepth(depthOf(u.x, u.y, 20));
+          this.tweens.add({ targets: v.body, alpha: 0.65, duration: 600, yoyo: true, repeat: -1 }); // pulsation : encore vivant
+          break;
+        }
+        case 'revive': {
+          const v = this.views.get(e.unit)!;
+          this.tweens.killTweensOf(v.body);
+          v.body.setAlpha(1).setAngle(0).clearTint();
+          v.dead = false; v.tex = ''; v.light?.setVisible(true);
+          this.say('heal');
+          banner(`${name(e.unit)} est relevé`, 'good');
+          await this.wait(300);
+          break;
+        }
         case 'death': {
           const v = this.views.get(e.unit)!, u = this.engine.unit(e.unit)!;
           this.say(u.faction === 'human' ? 'v_down' : 'hit_alien', { rate: u.faction === 'human' ? 1 : 0.7 });
@@ -841,7 +865,8 @@ export class NemesisScene extends Phaser.Scene implements TacticalView {
             const fall = v.flip ? -84 : 84;
             await this.tween({ targets: v.body, angle: fall, y: v.y - v.lift * 0.2 + 6, alpha: 0.9, duration: 520, ease: 'Quad.in' });
           }
-          v.body.setTint(0x6a6f78).setDepth(depthOf(u.x, u.y, 20));
+          this.tweens.killTweensOf(v.body);
+          v.body.setAlpha(1).setTint(0x9aa0a8).setDepth(depthOf(u.x, u.y, 20));
           this.tweens.add({ targets: v.shadow, alpha: 0, duration: 400 });
           break;
         }

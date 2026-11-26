@@ -32,6 +32,7 @@ export interface Unit {
   medkit: number;
   carrying: boolean; // porte l'artefact
   kills: number;
+  downed?: number; // à terre (Némésis) : tours restants avant de succomber, relevable avec un kit médical
 }
 
 export interface Objectives {
@@ -89,6 +90,8 @@ export type GameEvent =
   | { t: 'death'; unit: string }
   | { t: 'explosion'; at: Vec; radius: number }
   | { t: 'destroy'; at: Vec }
+  | { t: 'downed'; unit: string; turns: number }
+  | { t: 'revive'; unit: string }
   | { t: 'heal'; unit: string; target: string; amount: number }
   | { t: 'reload'; unit: string }
   | { t: 'kneel'; unit: string }

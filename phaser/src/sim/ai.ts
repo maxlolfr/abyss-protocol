@@ -14,7 +14,7 @@ const COVER_SHIELD = [1, 0.45, 0.12];
 
 function knownTargets(s: BattleState, side: Unit['faction']): Unit[] {
   const mine = living(s).filter(u => u.faction === side);
-  return living(s).filter(e => e.faction !== side && mine.some(m => canSee(s, m, e)));
+  return living(s).filter(e => e.faction !== side && !e.downed && mine.some(m => canSee(s, m, e))); // un soldat à terre n'est plus une cible
 }
 
 /** Danger d'une case : somme des ennemis connus qui la voient, pondérée par la couverture. */

@@ -10,6 +10,11 @@ export function startSide(s: BattleState, side: Faction, ev: GameEvent[]): void 
   s.side = side;
   ev.push({ t: 'turn', side, turn: s.turn });
   for (const u of living(s).filter(u => u.faction === side)) {
+    if (u.downed) { // à terre : aucune action, succombe s'il n'est pas relevé à temps
+      u.tu = 0; u.drain = 0;
+      if (--u.downed <= 0) kill(s, u, ev);
+      continue;
+    }
     u.tu = Math.max(0, u.maxTu - u.drain);
     u.drain = 0;
     u.watching = false;

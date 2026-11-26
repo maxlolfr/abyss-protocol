@@ -40,7 +40,7 @@ export function createBattle(seed: string, mission = 'lab'): BattleState {
   const squad = mission === 'nemesis' ? SQUAD.slice(0, 2) : SQUAD; // salle de démo : Walker et Okafor
   squad.forEach((q, i) => s.units.push(makeUnit(q.id, q.name, 'soldier', m.soldierSpawns[i]!, {
     weapon: q.weapon, accuracy: q.accuracy, reactions: q.reactions, maxTu: q.tu, tu: q.tu, maxHp: q.hp, hp: q.hp,
-    medkit: q.medkit, grenades: q.grenades, ammo: WEAPONS[q.weapon]!.mag,
+    medkit: mission === 'nemesis' ? Math.max(1, q.medkit) : q.medkit, grenades: q.grenades, ammo: WEAPONS[q.weapon]!.mag,
   })));
   const count: Record<string, number> = {};
   const alien = (i: number, kind: string, at: Vec, over: Partial<Unit> = {}) => {
